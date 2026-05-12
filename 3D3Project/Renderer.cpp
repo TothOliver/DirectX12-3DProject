@@ -21,6 +21,8 @@ bool Renderer::Initialize(HWND window, UINT width, UINT height)
 
     if (!CreateDevice()) { return false; }
 
+    if (!CreateCommandQueue()) { return false; }
+
     OutputDebugStringW(L"Renderer initialized.\n");
     return true;
 }
@@ -132,5 +134,24 @@ bool Renderer::CreateDevice()
         return false;
     }
     OutputDebugStringW(L"D3D12 device created.\n");
+    return true;
+}
+
+bool Renderer::CreateCommandQueue()
+{
+    D3D12_COMMAND_QUEUE_DESC queueDesc = {};
+    queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+    queueDesc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
+    queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+    queueDesc.NodeMask = 0;
+
+    HRESULT result = m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_commandQueue));
+
+    if (FAILED(result))
+    {
+        OutputDebugStringW(L"Failed to create command queue.\n");
+        return false;
+    }
+    OutputDebugStringW(L"Direct command queue created.\n");
     return true;
 }

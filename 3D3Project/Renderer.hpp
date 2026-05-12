@@ -21,6 +21,7 @@ private:
 	bool CreateDXGI();
 	bool SelectAdapter();
 	bool CreateDevice();
+	bool CreateCommandQueue();
 
 private:
 	HWND m_window = nullptr;
@@ -30,4 +31,5 @@ private:
 	Microsoft::WRL::ComPtr<IDXGIFactory6> m_factory;
 	Microsoft::WRL::ComPtr<IDXGIAdapter1> m_adapter;
 	Microsoft::WRL::ComPtr<ID3D12Device> m_device;
+	Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_commandQueue;
 };
