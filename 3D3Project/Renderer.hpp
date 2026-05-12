@@ -11,6 +11,11 @@ public:
 	void Shutdown();
 
 private:
+#if defined(_DEBUG)
+	void EnableDebugLayer();
+#endif
+
+private:
 	HWND m_window = nullptr;
 	UINT m_width = 0;
 	UINT m_height = 0;
