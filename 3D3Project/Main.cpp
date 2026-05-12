@@ -15,12 +15,24 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         return -1;
     }
 
-
-    while (GetMessageW(&message, nullptr, 0, 0) > 0)
+    bool running = true;
+    while (running) 
     {
-        TranslateMessage(&message);
-        DispatchMessageW(&message);
+        while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
+        {
+            if (message.message == WM_QUIT)
+            {
+                running = false;
+                break;
+            }
+            TranslateMessage(&message);
+            DispatchMessageW(&message);
+        }
+
+        if (!running) { break; }
+        
+        
     }
 
-    return 0;
+    return static_cast<int>(message.wParam);
 }
