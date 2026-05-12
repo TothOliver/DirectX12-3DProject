@@ -3,6 +3,7 @@
 #include "Window.h"
 #include "Renderer.hpp"
 
+
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
 {
     const UINT WIDTH = 1024;
