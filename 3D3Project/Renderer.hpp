@@ -2,8 +2,10 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
-#include <dxgi1_6.h>
 #include <wrl/client.h>
+#include <dxgi1_6.h>
+#include <d3d12.h>
+
 
 class Renderer 
 {
@@ -18,6 +20,7 @@ private:
 #endif
 	bool CreateDXGI();
 	bool SelectAdapter();
+	bool CreateDevice();
 
 private:
 	HWND m_window = nullptr;
@@ -26,4 +29,5 @@ private:
 
 	Microsoft::WRL::ComPtr<IDXGIFactory6> m_factory;
 	Microsoft::WRL::ComPtr<IDXGIAdapter1> m_adapter;
+	Microsoft::WRL::ComPtr<ID3D12Device> m_device;
 };

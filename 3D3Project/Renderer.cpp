@@ -1,7 +1,6 @@
 #include "Renderer.hpp"
 
 #include <string>
-#include <d3d12.h>
 
 #pragma comment(lib, "d3d12.lib") //links d3d12.lib
 #pragma comment(lib, "dxgi.lib")
@@ -19,6 +18,8 @@ bool Renderer::Initialize(HWND window, UINT width, UINT height)
     if (!CreateDXGI()) { return false; }
 
     if (!SelectAdapter()) { return false; }
+
+    if (!CreateDevice()) { return false; }
 
     OutputDebugStringW(L"Renderer initialized.\n");
     return true;
@@ -119,4 +120,17 @@ bool Renderer::SelectAdapter()
 
     OutputDebugStringW(L"No suitable hardware adapter found.\n");
     return false;
+}
+
+bool Renderer::CreateDevice()
+{
+    HRESULT result = D3D12CreateDevice(m_adapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&m_device));
+
+    if (FAILED(result))
+    {
+        OutputDebugStringW(L"Failed to create D3D12 device.\n");
+        return false;
+    }
+    OutputDebugStringW(L"D3D12 device created.\n");
+    return true;
 }
