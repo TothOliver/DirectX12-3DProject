@@ -22,7 +22,5 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         DispatchMessageW(&message);
     }
 
-    std::cout << "Git commit?" << std::endl;
-    std::cout << "Git commit2?" << std::endl;
     return 0;
 }
