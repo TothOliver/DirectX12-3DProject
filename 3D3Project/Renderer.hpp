@@ -22,14 +22,19 @@ private:
 	bool SelectAdapter();
 	bool CreateDevice();
 	bool CreateCommandQueue();
+	bool CreateSwapChain();
 
 private:
+	static constexpr UINT FrameCount = 2;
+
 	HWND m_window = nullptr;
 	UINT m_width = 0;
 	UINT m_height = 0;
+	UINT m_frame_index = 0;
 
 	Microsoft::WRL::ComPtr<IDXGIFactory6> m_factory;
 	Microsoft::WRL::ComPtr<IDXGIAdapter1> m_adapter;
 	Microsoft::WRL::ComPtr<ID3D12Device> m_device;
 	Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_commandQueue;
+	Microsoft::WRL::ComPtr<IDXGISwapChain4> m_swapChain;
 };

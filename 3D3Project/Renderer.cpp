@@ -23,6 +23,8 @@ bool Renderer::Initialize(HWND window, UINT width, UINT height)
 
     if (!CreateCommandQueue()) { return false; }
 
+    if (!CreateSwapChain()) { return false; }
+
     OutputDebugStringW(L"Renderer initialized.\n");
     return true;
 }
@@ -101,10 +103,10 @@ bool Renderer::SelectAdapter()
             return false;
         }
 
-        DXGI_ADAPTER_DESC1 adapterDescription = {};
-        adapter->GetDesc1(&adapterDescription);
+        DXGI_ADAPTER_DESC1 adapterDesc = {};
+        adapter->GetDesc1(&adapterDesc);
 
-        if (adapterDescription.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
+        if (adapterDesc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
         {
             adapterIndex++;
             continue;
@@ -113,7 +115,7 @@ bool Renderer::SelectAdapter()
         m_adapter = adapter;
 
         wchar_t message[256];
-        swprintf_s(message, L"Selected adapter: %s\n", adapterDescription.Description);
+        swprintf_s(message, L"Selected adapter: %s\n", adapterDesc.Description);
 
         OutputDebugStringW(message);
 
@@ -153,5 +155,47 @@ bool Renderer::CreateCommandQueue()
         return false;
     }
     OutputDebugStringW(L"Direct command queue created.\n");
+    return true;
+}
+
+bool Renderer::CreateSwapChain()
+{
+    DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
+    swapChainDesc.Width = m_width;
+    swapChainDesc.Height = m_height;
+    swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    swapChainDesc.Stereo = FALSE;
+    swapChainDesc.SampleDesc.Count = 1;
+    swapChainDesc.SampleDesc.Quality = 0;
+    swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    swapChainDesc.BufferCount = FrameCount;
+    swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
+    swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
+    swapChainDesc.Flags = 0;
+
+    Microsoft::WRL::ComPtr<IDXGISwapChain1> tempSwapChain;
+
+    HRESULT result = m_factory->CreateSwapChainForHwnd(m_commandQueue.Get(), m_window, &swapChainDesc, nullptr, nullptr, &tempSwapChain);
+
+    if (FAILED(result))
+    {
+        OutputDebugStringW(L"Failed to create swapchain\n");
+        return false;
+    }
+
+    result = tempSwapChain.As(&m_swapChain);
+
+    if (FAILED(result))
+    {
+        OutputDebugStringW(L"Failed to convert swap chain to IDXGISwapChain4.\n");
+        return false;
+    }
+
+    m_frame_index = m_swapChain->GetCurrentBackBufferIndex();
+
+    m_factory->MakeWindowAssociation(m_window, DXGI_MWA_NO_ALT_ENTER);
+
+    OutputDebugStringW(L"Swapchain created.\n");
     return true;
 }
