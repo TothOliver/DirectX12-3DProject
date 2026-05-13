@@ -25,6 +25,10 @@ bool Renderer::Initialize(HWND window, UINT width, UINT height)
 
     if (!CreateSwapChain()) { return false; }
 
+    if (!CreateRTVHeap()) { return false; }
+
+    if (!CreateRTV()) { return false; }
+
     OutputDebugStringW(L"Renderer initialized.\n");
     return true;
 }
@@ -197,5 +201,50 @@ bool Renderer::CreateSwapChain()
     m_factory->MakeWindowAssociation(m_window, DXGI_MWA_NO_ALT_ENTER);
 
     OutputDebugStringW(L"Swapchain created.\n");
+    return true;
+}
+
+bool Renderer::CreateRTVHeap()
+{
+    D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+    heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+    heapDesc.NumDescriptors = FrameCount;
+    heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    heapDesc.NodeMask = 0;
+
+    HRESULT result = m_device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_rtvDescHeap));
+
+    if (FAILED(result))
+    {
+        OutputDebugStringW(L"Failed to create RTV descripter heap.\n");
+        return false;
+    }
+
+    m_rtvDescSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    
+    OutputDebugStringW(L"RTV descripter heap created.\n");
+    return true;
+}
+
+bool Renderer::CreateRTV()
+{
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_rtvDescHeap->GetCPUDescriptorHandleForHeapStart();
+
+    for (UINT i = 0; i < FrameCount; ++i)
+    {
+        HRESULT result = m_swapChain->GetBuffer(i, IID_PPV_ARGS(&m_renderTarget[i]));
+
+        if (FAILED(result))
+        {
+            OutputDebugStringW(L"Failed to create swapchain backbuffer.\n");
+            return false;
+        }
+
+        m_device->CreateRenderTargetView(m_renderTarget[i].Get(), nullptr, rtvHandle);
+        
+        rtvHandle.ptr += m_rtvDescSize;
+    }
+
+    OutputDebugStringW(L"RTV created.\n");
     return true;
 }

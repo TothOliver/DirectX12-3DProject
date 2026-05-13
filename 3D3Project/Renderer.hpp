@@ -23,6 +23,8 @@ private:
 	bool CreateDevice();
 	bool CreateCommandQueue();
 	bool CreateSwapChain();
+	bool CreateRTVHeap();
+	bool CreateRTV();
 
 private:
 	static constexpr UINT FrameCount = 2;
@@ -31,10 +33,13 @@ private:
 	UINT m_width = 0;
 	UINT m_height = 0;
 	UINT m_frame_index = 0;
+	UINT m_rtvDescSize = 0;
 
 	Microsoft::WRL::ComPtr<IDXGIFactory6> m_factory;
 	Microsoft::WRL::ComPtr<IDXGIAdapter1> m_adapter;
 	Microsoft::WRL::ComPtr<ID3D12Device> m_device;
 	Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_commandQueue;
 	Microsoft::WRL::ComPtr<IDXGISwapChain4> m_swapChain;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvDescHeap;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_renderTarget[FrameCount];
 };
