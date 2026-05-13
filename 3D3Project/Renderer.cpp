@@ -356,7 +356,7 @@ void Renderer::WaitForGPU()
             OutputDebugStringW(L"Failed to set fence event.\n");
             return;
         }
-    }
 
-    WaitForSingleObject(m_fenceEvent, INFINITE);
+        WaitForSingleObject(m_fenceEvent, INFINITE);
+    }
 }
