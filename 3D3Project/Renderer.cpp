@@ -33,6 +33,8 @@ bool Renderer::Initialize(HWND window, UINT width, UINT height)
 
     if (!CreateCommandList()) { return false; }
 
+    if (!CreateFence()) { return false; }
+
     OutputDebugStringW(L"Renderer initialized.\n");
     return true;
 }
@@ -50,6 +52,12 @@ void Renderer::Render()
 
 void Renderer::Shutdown()
 {
+    if (m_fenceEvent != nullptr)
+    {
+        CloseHandle(m_fenceEvent);
+        m_fenceEvent = nullptr;
+    }
+
     OutputDebugStringW(L"Renderer shutdown.\n");
 }
 
@@ -291,4 +299,64 @@ bool Renderer::CreateCommandList()
 
     OutputDebugStringW(L"Command list created.\n");
     return true;
+}
+
+bool Renderer::CreateFence()
+{
+    HRESULT result = m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence));
+
+    if (FAILED(result))
+    {
+        OutputDebugStringW(L"Failed to create fence.\n");
+        return false;
+    }
+
+    m_fenceValue = 1;
+    m_fenceEvent = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+
+    if (m_fenceEvent == nullptr)
+    {
+        OutputDebugStringW(L"Failed to create fence event.\n");
+        return false;
+    }
+
+    OutputDebugStringW(L"Fence and Event created.\n");
+    return true;
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE Renderer::GetCurrentRTV() const
+{
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_rtvDescHeap->GetCPUDescriptorHandleForHeapStart();
+
+    rtvHandle.ptr += static_cast<SIZE_T>(m_frameIndex) * m_rtvDescSize;
+
+    return rtvHandle;
+}
+
+void Renderer::WaitForGPU()
+{
+    const UINT64 fenceToWaitFor = m_fenceValue;
+
+    HRESULT result = m_commandQueue->Signal(m_fence.Get(), fenceToWaitFor);
+
+    if (FAILED(result))
+    {
+        OutputDebugStringW(L"Failed to signal fence.\n");
+        return;
+    }
+
+    m_fenceValue++;
+
+    if (m_fence->GetCompletedValue() < fenceToWaitFor)
+    {
+        result = m_fence->SetEventOnCompletion(fenceToWaitFor, m_fenceEvent);
+
+        if (FAILED(result))
+        {
+            OutputDebugStringW(L"Failed to set fence event.\n");
+            return;
+        }
+    }
+
+    WaitForSingleObject(m_fenceEvent, INFINITE);
 }

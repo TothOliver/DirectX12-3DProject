@@ -27,6 +27,10 @@ private:
 	bool CreateRTV();
 	bool CreateCommandAllocators();
 	bool CreateCommandList();
+	bool CreateFence();
+
+	D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentRTV() const;
+	void WaitForGPU();
 
 private:
 	static constexpr UINT FrameCount = 2;
@@ -36,6 +40,8 @@ private:
 	UINT m_height = 0;
 	UINT m_frameIndex = 0;
 	UINT m_rtvDescSize = 0;
+	UINT m_fenceValue = 0;
+	HANDLE m_fenceEvent = nullptr;
 
 	Microsoft::WRL::ComPtr<IDXGIFactory6> m_factory;
 	Microsoft::WRL::ComPtr<IDXGIAdapter1> m_adapter;
@@ -46,4 +52,5 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_renderTarget[FrameCount];
 	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_commandAllocators[FrameCount];
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;
+	Microsoft::WRL::ComPtr<ID3D12Fence> m_fence;
 };
