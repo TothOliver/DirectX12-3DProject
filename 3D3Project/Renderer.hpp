@@ -25,6 +25,8 @@ private:
 	bool CreateSwapChain();
 	bool CreateRTVHeap();
 	bool CreateRTV();
+	bool CreateCommandAllocators();
+	bool CreateCommandList();
 
 private:
 	static constexpr UINT FrameCount = 2;
@@ -32,7 +34,7 @@ private:
 	HWND m_window = nullptr;
 	UINT m_width = 0;
 	UINT m_height = 0;
-	UINT m_frame_index = 0;
+	UINT m_frameIndex = 0;
 	UINT m_rtvDescSize = 0;
 
 	Microsoft::WRL::ComPtr<IDXGIFactory6> m_factory;
@@ -42,4 +44,6 @@ private:
 	Microsoft::WRL::ComPtr<IDXGISwapChain4> m_swapChain;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvDescHeap;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_renderTarget[FrameCount];
+	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_commandAllocators[FrameCount];
+	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;
 };

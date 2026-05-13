@@ -29,6 +29,10 @@ bool Renderer::Initialize(HWND window, UINT width, UINT height)
 
     if (!CreateRTV()) { return false; }
 
+    if (!CreateCommandAllocators()) { return false; }
+
+    if (!CreateCommandList()) { return false; }
+
     OutputDebugStringW(L"Renderer initialized.\n");
     return true;
 }
@@ -196,7 +200,7 @@ bool Renderer::CreateSwapChain()
         return false;
     }
 
-    m_frame_index = m_swapChain->GetCurrentBackBufferIndex();
+    m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 
     m_factory->MakeWindowAssociation(m_window, DXGI_MWA_NO_ALT_ENTER);
 
@@ -246,5 +250,45 @@ bool Renderer::CreateRTV()
     }
 
     OutputDebugStringW(L"RTV created.\n");
+    return true;
+}
+
+bool Renderer::CreateCommandAllocators()
+{
+    for (UINT i = 0; i < FrameCount; ++i)
+    {
+        HRESULT result = m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocators[i]));
+
+        if (FAILED(result))
+        {
+            OutputDebugStringW(L"Failed to create command allocator.\n");
+            return false;
+        }
+    }
+
+    OutputDebugStringW(L"Command allocators created.\n");
+    return true;
+}
+
+bool Renderer::CreateCommandList()
+{
+    HRESULT result = m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, 
+        m_commandAllocators[m_frameIndex].Get(), nullptr, IID_PPV_ARGS(&m_commandList));
+
+    if (FAILED(result))
+    {
+        OutputDebugStringW(L"Failed to create command list.\n");
+        return false;
+    }
+
+    result = m_commandList->Close();
+
+    if (FAILED(result))
+    {
+        OutputDebugStringW(L"Failed to close command list.\n");
+        return false;
+    }
+
+    OutputDebugStringW(L"Command list created.\n");
     return true;
 }
