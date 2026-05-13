@@ -41,13 +41,76 @@ bool Renderer::Initialize(HWND window, UINT width, UINT height)
 
 void Renderer::Render()
 {
-    static UINT frameCounter = 0;
-    frameCounter++;
+    HRESULT result = m_commandAllocators[m_frameIndex]->Reset();
 
-    if (frameCounter % 120 == 0)
+    if (FAILED(result))
     {
-        //OutputDebugStringW(L"Renderer::Render() is running.\n");
+        OutputDebugStringW(L"Failed to reset command allocator.\n");
+        return;
     }
+
+    result = m_commandList->Reset(m_commandAllocators[m_frameIndex].Get(), nullptr);
+
+    if (FAILED(result))
+    {
+        OutputDebugStringW(L"Failed to reset command list.\n");
+        return;
+    }
+
+    D3D12_RESOURCE_BARRIER barrierRenderTarget = {};
+    barrierRenderTarget.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrierRenderTarget.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    barrierRenderTarget.Transition.pResource = m_renderTargets[m_frameIndex].Get();
+    barrierRenderTarget.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+    barrierRenderTarget.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    barrierRenderTarget.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+    m_commandList->ResourceBarrier(1, &barrierRenderTarget);
+
+    D3D12_CPU_DESCRIPTOR_HANDLE currentRTV = GetCurrentRTV();
+
+    m_commandList->OMSetRenderTargets(1, &currentRTV, FALSE, nullptr);
+
+    const float clearColor[] = { 0.1f, 0.2f, 0.4f, 1.0f };
+
+    m_commandList->ClearRenderTargetView(currentRTV, clearColor, 0, nullptr);
+
+    D3D12_RESOURCE_BARRIER barrierPresent = {};
+    barrierPresent.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrierPresent.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    barrierPresent.Transition.pResource = m_renderTargets[m_frameIndex].Get();
+    barrierPresent.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    barrierPresent.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+    barrierPresent.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+    m_commandList->ResourceBarrier(1, &barrierPresent);
+
+    m_commandList->Close();
+
+    if (FAILED(result))
+    {
+        OutputDebugStringW(L"Failed to close command list.\n");
+        return;
+    }
+
+    ID3D12CommandList* commandLists[] = {
+        m_commandList.Get()
+    };
+
+    m_commandQueue->ExecuteCommandLists(1, commandLists);
+
+    result = m_swapChain->Present(1, 0);
+
+    if (FAILED(result))
+    {
+        OutputDebugStringW(L"Failed to present swap chain.\n");
+        return;
+    }
+
+    WaitForGPU();
+
+    m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
+    
 }
 
 void Renderer::Shutdown()
@@ -244,7 +307,7 @@ bool Renderer::CreateRTV()
 
     for (UINT i = 0; i < FrameCount; ++i)
     {
-        HRESULT result = m_swapChain->GetBuffer(i, IID_PPV_ARGS(&m_renderTarget[i]));
+        HRESULT result = m_swapChain->GetBuffer(i, IID_PPV_ARGS(&m_renderTargets[i]));
 
         if (FAILED(result))
         {
@@ -252,7 +315,7 @@ bool Renderer::CreateRTV()
             return false;
         }
 
-        m_device->CreateRenderTargetView(m_renderTarget[i].Get(), nullptr, rtvHandle);
+        m_device->CreateRenderTargetView(m_renderTargets[i].Get(), nullptr, rtvHandle);
         
         rtvHandle.ptr += m_rtvDescSize;
     }

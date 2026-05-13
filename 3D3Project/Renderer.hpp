@@ -49,7 +49,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_commandQueue;
 	Microsoft::WRL::ComPtr<IDXGISwapChain4> m_swapChain;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvDescHeap;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_renderTarget[FrameCount];
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_renderTargets[FrameCount];
 	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_commandAllocators[FrameCount];
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;
 	Microsoft::WRL::ComPtr<ID3D12Fence> m_fence;
