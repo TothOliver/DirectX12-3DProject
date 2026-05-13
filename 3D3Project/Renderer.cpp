@@ -71,7 +71,7 @@ void Renderer::Render()
 
     m_commandList->OMSetRenderTargets(1, &currentRTV, FALSE, nullptr);
 
-    const float clearColor[] = { 0.1f, 0.2f, 0.4f, 1.0f };
+    const float clearColor[] = { 0.0f, 0.5f, 0.5f, 1.0f };
 
     m_commandList->ClearRenderTargetView(currentRTV, clearColor, 0, nullptr);
 
@@ -110,7 +110,7 @@ void Renderer::Render()
     WaitForGPU();
 
     m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
-    
+  
 }
 
 void Renderer::Shutdown()
