@@ -39,6 +39,5 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
     }
     renderer.Shutdown();
 
-
     return static_cast<int>(message.wParam);
 }
