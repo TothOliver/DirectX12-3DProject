@@ -6,7 +6,7 @@
 #include <dxgi1_6.h>
 #include <d3d12.h>
 
-#include "TrianglePass.hpp"
+#include "MeshPass.hpp"
 
 class Renderer 
 {
@@ -55,5 +55,5 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;
 	Microsoft::WRL::ComPtr<ID3D12Fence> m_fence;
 
-	TrianglePass m_trianglePass;
+	MeshPass m_meshPass;
 };

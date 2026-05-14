@@ -1,18 +1,18 @@
-#include "TrianglePass.hpp"
+#include "MeshPass.hpp"
 
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
 #pragma comment(lib, "d3dcompiler.lib")
 
-bool TrianglePass::Initialize(ID3D12Device* device, DXGI_FORMAT renderTargetFormat, UINT width, UINT height)
+bool MeshPass::Initialize(ID3D12Device* device, DXGI_FORMAT renderTargetFormat, UINT width, UINT height)
 {
-    if (!CreateDeviceDependantResources(device, width, height)) { return false; }
+    if (!CreateDeviceDependantResources(device, renderTargetFormat, width, height)) { return false; }
 
     OutputDebugStringW(L"TrianglePass initialized.\n");
     return true;
 }
 
-void TrianglePass::Draw(ID3D12GraphicsCommandList* commandList)
+void MeshPass::Draw(ID3D12GraphicsCommandList* commandList)
 {
     commandList->RSSetViewports(1, &m_viewport);
     commandList->RSSetScissorRects(1, &m_scissorRect);
@@ -38,18 +38,17 @@ void TrianglePass::Draw(ID3D12GraphicsCommandList* commandList)
     commandList->DrawInstanced(3, 1, 0, 0);
 }
 
-void TrianglePass::Shutdown()
+void MeshPass::Shutdown()
 {
 }
 
-
-bool TrianglePass::CreateDeviceDependantResources(ID3D12Device* device, UINT width, UINT height)
+bool MeshPass::CreateDeviceDependantResources(ID3D12Device* device, DXGI_FORMAT renderTargetFormat, UINT width, UINT height)
 {
     if (!CreateRootSignature(device)) { return false; }
 
     if (!CreateShaders()) { return false; }
 
-    if (!CreatePipelineState(device)) { return false; }
+    if (!CreatePipelineState(device, renderTargetFormat)) { return false; }
 
     if (!CreateVertexBuffer(device)) { return false; }
 
@@ -68,11 +67,10 @@ bool TrianglePass::CreateDeviceDependantResources(ID3D12Device* device, UINT wid
     return true;
 }
 
-bool TrianglePass::CreateRootSignature(ID3D12Device* device)
+bool MeshPass::CreateRootSignature(ID3D12Device* device)
 {
     D3D12_ROOT_SIGNATURE_DESC desc = {};
-    desc.Flags =
-        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+    desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
     Microsoft::WRL::ComPtr<ID3DBlob> signature;
     Microsoft::WRL::ComPtr<ID3DBlob> error;
@@ -99,7 +97,7 @@ bool TrianglePass::CreateRootSignature(ID3D12Device* device)
     return SUCCEEDED(result);
 }
 
-bool TrianglePass::CreateShaders()
+bool MeshPass::CreateShaders()
 {
     UINT compileFlags = 0;
 
@@ -146,7 +144,7 @@ bool TrianglePass::CreateShaders()
     return true;
 }
 
-bool TrianglePass::CreatePipelineState(ID3D12Device* device)
+bool MeshPass::CreatePipelineState(ID3D12Device* device, DXGI_FORMAT renderTargetFormat)
 {
     static const D3D12_INPUT_ELEMENT_DESC inputLayout[] =
     {
@@ -178,15 +176,13 @@ bool TrianglePass::CreatePipelineState(ID3D12Device* device)
 
     rasterizerDesc.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
     rasterizerDesc.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
-    rasterizerDesc.SlopeScaledDepthBias =
-        D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
+    rasterizerDesc.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
 
     rasterizerDesc.DepthClipEnable = TRUE;
     rasterizerDesc.MultisampleEnable = FALSE;
     rasterizerDesc.AntialiasedLineEnable = FALSE;
     rasterizerDesc.ForcedSampleCount = 0;
-    rasterizerDesc.ConservativeRaster =
-        D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+    rasterizerDesc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
 
     D3D12_BLEND_DESC blendDesc = {};
 
@@ -208,8 +204,7 @@ bool TrianglePass::CreatePipelineState(ID3D12Device* device)
 
     rtBlend.LogicOp = D3D12_LOGIC_OP_NOOP;
 
-    rtBlend.RenderTargetWriteMask =
-        D3D12_COLOR_WRITE_ENABLE_ALL;
+    rtBlend.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 
     blendDesc.RenderTarget[0] = rtBlend;
 
@@ -242,19 +237,16 @@ bool TrianglePass::CreatePipelineState(ID3D12Device* device)
         D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
     psoDesc.NumRenderTargets = 1;
-    psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+    psoDesc.RTVFormats[0] = renderTargetFormat;
 
     psoDesc.SampleDesc.Count = 1;
 
-    HRESULT result = device->CreateGraphicsPipelineState(
-        &psoDesc,
-        IID_PPV_ARGS(&m_pipelineState)
-    );
+    HRESULT result = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState));
 
     return SUCCEEDED(result);
 }
 
-bool TrianglePass::CreateVertexBuffer(ID3D12Device* device)
+bool MeshPass::CreateVertexBuffer(ID3D12Device* device)
 {
     Vertex vertices[] =
     {
@@ -301,8 +293,7 @@ bool TrianglePass::CreateVertexBuffer(ID3D12Device* device)
 
     m_vertexBuffer->Unmap(0, nullptr);
 
-    m_vertexBufferView.BufferLocation =
-        m_vertexBuffer->GetGPUVirtualAddress();
+    m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
 
     m_vertexBufferView.StrideInBytes = sizeof(Vertex);
 

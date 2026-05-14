@@ -1,7 +1,7 @@
 #include "Renderer.hpp"
 #include <string>
 
-#pragma comment(lib, "d3d12.lib") //links d3d12.lib
+#pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 
 bool Renderer::Initialize(HWND window, UINT width, UINT height)
@@ -34,7 +34,7 @@ bool Renderer::Initialize(HWND window, UINT width, UINT height)
 
     if (!CreateFence()) { return false; }
 
-    if (!m_trianglePass.Initialize(m_device.Get(), DXGI_FORMAT_R8G8B8A8_UNORM, m_width, m_height))
+    if (!m_meshPass.Initialize(m_device.Get(), DXGI_FORMAT_R8G8B8A8_UNORM, m_width, m_height))
     {
         OutputDebugStringW(L"Failed to initialize TrianglePass.\n");
         return false;
@@ -80,8 +80,7 @@ void Renderer::Render()
 
     m_commandList->ClearRenderTargetView(currentRTV, clearColor, 0, nullptr);
 
-    m_trianglePass.Draw(m_commandList.Get());
-    //Trianglepass here with draw call?
+    m_meshPass.Draw(m_commandList.Get());
 
     D3D12_RESOURCE_BARRIER barrierPresent = {};
     barrierPresent.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -128,6 +127,8 @@ void Renderer::Shutdown()
         CloseHandle(m_fenceEvent);
         m_fenceEvent = nullptr;
     }
+
+    m_meshPass.Shutdown();
 
     OutputDebugStringW(L"Renderer shutdown.\n");
 }

@@ -3,7 +3,7 @@
 #include <d3d12.h>
 #include <wrl/client.h>
 
-class TrianglePass
+class MeshPass
 {
 public:
 	bool Initialize(ID3D12Device* device, DXGI_FORMAT renderTargetFormat, UINT width, UINT height);
@@ -11,10 +11,10 @@ public:
 	void Shutdown();
 
 private:
-	bool CreateDeviceDependantResources(ID3D12Device* device, UINT width, UINT height);
+	bool CreateDeviceDependantResources(ID3D12Device* device, DXGI_FORMAT renderTargetFormat, UINT width, UINT height);
 	bool CreateRootSignature(ID3D12Device* device);
 	bool CreateShaders();
-	bool CreatePipelineState(ID3D12Device* device);
+	bool CreatePipelineState(ID3D12Device* device, DXGI_FORMAT renderTargetFormat);
 	bool CreateVertexBuffer(ID3D12Device* device);
 
 private:

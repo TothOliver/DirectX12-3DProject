@@ -125,12 +125,12 @@
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Renderer.cpp" />
-    <ClCompile Include="TrianglePass.cpp" />
+    <ClCompile Include="MeshPass.cpp" />
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Renderer.hpp" />
-    <ClInclude Include="TrianglePass.hpp" />
+    <ClInclude Include="MeshPass.hpp" />
     <ClInclude Include="Window.h" />
   </ItemGroup>
   <ItemGroup>
