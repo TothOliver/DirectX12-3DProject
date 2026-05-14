@@ -133,6 +133,14 @@
     <ClInclude Include="TrianglePass.hpp" />
     <ClInclude Include="Window.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="PixelShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="VertexShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
