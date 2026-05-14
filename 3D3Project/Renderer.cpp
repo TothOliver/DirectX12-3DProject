@@ -75,6 +75,8 @@ void Renderer::Render()
 
     m_commandList->ClearRenderTargetView(currentRTV, clearColor, 0, nullptr);
 
+    //Trianglepass here with draw call?
+
     D3D12_RESOURCE_BARRIER barrierPresent = {};
     barrierPresent.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     barrierPresent.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
