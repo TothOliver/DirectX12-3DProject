@@ -29,11 +29,7 @@ private:
 	bool CreateCommandAllocators();
 	bool CreateCommandList();
 	bool CreateFence();
-	bool CreateDeviceDependantResources();
-	bool CreateRootSignature();
-	bool CreateShaders();
-	bool CreatePipelineState();
-	bool CreateVertexBuffer();
+
 	D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentRTV() const;
 	void WaitForGPU();
 
@@ -58,19 +54,6 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_commandAllocators[FrameCount];
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;
 	Microsoft::WRL::ComPtr<ID3D12Fence> m_fence;
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
-	Microsoft::WRL::ComPtr<ID3DBlob> m_vertexShader;
-	Microsoft::WRL::ComPtr<ID3DBlob> m_pixelShader;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer;
 
-	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
-	D3D12_VIEWPORT m_viewport;
-	D3D12_RECT m_scissorRect;
-
-	struct Vertex
-	{
-		float position[3];
-		float color[4];
-	};
+	TrianglePass m_trianglePass;
 };

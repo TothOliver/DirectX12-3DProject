@@ -1,15 +1,312 @@
 #include "TrianglePass.hpp"
 
-bool TriangleRenderer::Initialize(ID3D12Device* device, DXGI_FORMAT renderTargetFormat)
+#include <d3dcompiler.h>
+#include <DirectXMath.h>
+#pragma comment(lib, "d3dcompiler.lib")
+
+bool TrianglePass::Initialize(ID3D12Device* device, DXGI_FORMAT renderTargetFormat, UINT width, UINT height)
 {
-    return false;
+    if (!CreateDeviceDependantResources(device, width, height)) { return false; }
+
+    OutputDebugStringW(L"TrianglePass initialized.\n");
+    return true;
 }
 
-void TriangleRenderer::Draw(ID3D12GraphicsCommandList* commandList)
+void TrianglePass::Draw(ID3D12GraphicsCommandList* commandList)
+{
+    commandList->RSSetViewports(1, &m_viewport);
+    commandList->RSSetScissorRects(1, &m_scissorRect);
+
+    commandList->SetGraphicsRootSignature(
+        m_rootSignature.Get()
+    );
+
+    commandList->SetPipelineState(
+        m_pipelineState.Get()
+    );
+
+    commandList->IASetPrimitiveTopology(
+        D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST
+    );
+
+    commandList->IASetVertexBuffers(
+        0,
+        1,
+        &m_vertexBufferView
+    );
+
+    commandList->DrawInstanced(3, 1, 0, 0);
+}
+
+void TrianglePass::Shutdown()
 {
 }
 
-void TriangleRenderer::Shutdown()
+
+bool TrianglePass::CreateDeviceDependantResources(ID3D12Device* device, UINT width, UINT height)
 {
+    if (!CreateRootSignature(device)) { return false; }
+
+    if (!CreateShaders()) { return false; }
+
+    if (!CreatePipelineState(device)) { return false; }
+
+    if (!CreateVertexBuffer(device)) { return false; }
+
+    m_viewport.TopLeftX = 0;
+    m_viewport.TopLeftY = 0;
+    m_viewport.Width = static_cast<float>(width);
+    m_viewport.Height = static_cast<float>(height);
+    m_viewport.MinDepth = 0.0f;
+    m_viewport.MaxDepth = 1.0f;
+
+    m_scissorRect.left = 0;
+    m_scissorRect.top = 0;
+    m_scissorRect.right = static_cast<LONG>(width);
+    m_scissorRect.bottom = static_cast<LONG>(height);
+
+    return true;
 }
 
+bool TrianglePass::CreateRootSignature(ID3D12Device* device)
+{
+    D3D12_ROOT_SIGNATURE_DESC desc = {};
+    desc.Flags =
+        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+    Microsoft::WRL::ComPtr<ID3DBlob> signature;
+    Microsoft::WRL::ComPtr<ID3DBlob> error;
+
+    HRESULT result = D3D12SerializeRootSignature(
+        &desc,
+        D3D_ROOT_SIGNATURE_VERSION_1,
+        &signature,
+        &error
+    );
+
+    if (FAILED(result))
+    {
+        return false;
+    }
+
+    result = device->CreateRootSignature(
+        0,
+        signature->GetBufferPointer(),
+        signature->GetBufferSize(),
+        IID_PPV_ARGS(&m_rootSignature)
+    );
+
+    return SUCCEEDED(result);
+}
+
+bool TrianglePass::CreateShaders()
+{
+    UINT compileFlags = 0;
+
+#if defined(_DEBUG)
+    compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#endif
+
+    HRESULT result = D3DCompileFromFile(
+        L"VertexShader.hlsl",
+        nullptr,
+        nullptr,
+        "VSMain",
+        "vs_5_0",
+        compileFlags,
+        0,
+        &m_vertexShader,
+        nullptr
+    );
+
+    if (FAILED(result))
+    {
+        OutputDebugStringW(L"Failed to compile vertex shader.\n");
+        return false;
+    }
+
+    result = D3DCompileFromFile(
+        L"PixelShader.hlsl",
+        nullptr,
+        nullptr,
+        "PSMain",
+        "ps_5_0",
+        compileFlags,
+        0,
+        &m_pixelShader,
+        nullptr
+    );
+
+    if (FAILED(result))
+    {
+        OutputDebugStringW(L"Failed to compile pixel shader.\n");
+        return false;
+    }
+
+    return true;
+}
+
+bool TrianglePass::CreatePipelineState(ID3D12Device* device)
+{
+    static const D3D12_INPUT_ELEMENT_DESC inputLayout[] =
+    {
+        {
+            "POSITION",
+            0,
+            DXGI_FORMAT_R32G32B32_FLOAT,
+            0,
+            0,
+            D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+            0
+        },
+        {
+            "COLOR",
+            0,
+            DXGI_FORMAT_R32G32B32A32_FLOAT,
+            0,
+            12,
+            D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+            0
+        }
+    };
+
+    D3D12_RASTERIZER_DESC rasterizerDesc = {};
+
+    rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
+    rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
+    rasterizerDesc.FrontCounterClockwise = FALSE;
+
+    rasterizerDesc.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
+    rasterizerDesc.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
+    rasterizerDesc.SlopeScaledDepthBias =
+        D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
+
+    rasterizerDesc.DepthClipEnable = TRUE;
+    rasterizerDesc.MultisampleEnable = FALSE;
+    rasterizerDesc.AntialiasedLineEnable = FALSE;
+    rasterizerDesc.ForcedSampleCount = 0;
+    rasterizerDesc.ConservativeRaster =
+        D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+
+    D3D12_BLEND_DESC blendDesc = {};
+
+    blendDesc.AlphaToCoverageEnable = FALSE;
+    blendDesc.IndependentBlendEnable = FALSE;
+
+    D3D12_RENDER_TARGET_BLEND_DESC rtBlend = {};
+
+    rtBlend.BlendEnable = FALSE;
+    rtBlend.LogicOpEnable = FALSE;
+
+    rtBlend.SrcBlend = D3D12_BLEND_ONE;
+    rtBlend.DestBlend = D3D12_BLEND_ZERO;
+    rtBlend.BlendOp = D3D12_BLEND_OP_ADD;
+
+    rtBlend.SrcBlendAlpha = D3D12_BLEND_ONE;
+    rtBlend.DestBlendAlpha = D3D12_BLEND_ZERO;
+    rtBlend.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+
+    rtBlend.LogicOp = D3D12_LOGIC_OP_NOOP;
+
+    rtBlend.RenderTargetWriteMask =
+        D3D12_COLOR_WRITE_ENABLE_ALL;
+
+    blendDesc.RenderTarget[0] = rtBlend;
+
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+
+    psoDesc.InputLayout = { inputLayout, _countof(inputLayout) };
+    psoDesc.pRootSignature = m_rootSignature.Get();
+
+    psoDesc.VS =
+    {
+        m_vertexShader->GetBufferPointer(),
+        m_vertexShader->GetBufferSize()
+    };
+
+    psoDesc.PS =
+    {
+        m_pixelShader->GetBufferPointer(),
+        m_pixelShader->GetBufferSize()
+    };
+
+    psoDesc.RasterizerState = rasterizerDesc;
+    psoDesc.BlendState = blendDesc;
+
+    psoDesc.DepthStencilState.DepthEnable = FALSE;
+    psoDesc.DepthStencilState.StencilEnable = FALSE;
+
+    psoDesc.SampleMask = UINT_MAX;
+
+    psoDesc.PrimitiveTopologyType =
+        D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+
+    psoDesc.NumRenderTargets = 1;
+    psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+    psoDesc.SampleDesc.Count = 1;
+
+    HRESULT result = device->CreateGraphicsPipelineState(
+        &psoDesc,
+        IID_PPV_ARGS(&m_pipelineState)
+    );
+
+    return SUCCEEDED(result);
+}
+
+bool TrianglePass::CreateVertexBuffer(ID3D12Device* device)
+{
+    Vertex vertices[] =
+    {
+        { { 0.0f, 0.25f, 0.0f }, { 1,0,0,1 } },
+        { { 0.25f,-0.25f,0.0f }, { 0,1,0,1 } },
+        { {-0.25f,-0.25f,0.0f }, { 0,0,1,1 } },
+    };
+
+    const UINT bufferSize = sizeof(vertices);
+
+    D3D12_HEAP_PROPERTIES heapProps = {};
+    heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+
+    D3D12_RESOURCE_DESC resourceDesc = {};
+    resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    resourceDesc.Width = bufferSize;
+    resourceDesc.Height = 1;
+    resourceDesc.DepthOrArraySize = 1;
+    resourceDesc.MipLevels = 1;
+    resourceDesc.SampleDesc.Count = 1;
+    resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+    HRESULT result = device->CreateCommittedResource(
+        &heapProps,
+        D3D12_HEAP_FLAG_NONE,
+        &resourceDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&m_vertexBuffer)
+    );
+
+    if (FAILED(result))
+    {
+        return false;
+    }
+
+    void* mappedData = nullptr;
+
+    D3D12_RANGE readRange = {};
+
+    m_vertexBuffer->Map(0, &readRange, &mappedData);
+
+    memcpy(mappedData, vertices, sizeof(vertices));
+
+    m_vertexBuffer->Unmap(0, nullptr);
+
+    m_vertexBufferView.BufferLocation =
+        m_vertexBuffer->GetGPUVirtualAddress();
+
+    m_vertexBufferView.StrideInBytes = sizeof(Vertex);
+
+    m_vertexBufferView.SizeInBytes = bufferSize;
+
+    return true;
+}
