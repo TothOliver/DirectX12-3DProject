@@ -34,6 +34,7 @@ private:
 	bool CreateFence();
 
 	D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentRTV() const;
+	D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentDSV() const;
 	void WaitForGPU();
 
 private:

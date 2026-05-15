@@ -75,12 +75,14 @@ void Renderer::Render()
     m_commandList->ResourceBarrier(1, &barrierRenderTarget);
 
     D3D12_CPU_DESCRIPTOR_HANDLE currentRTV = GetCurrentRTV();
+    D3D12_CPU_DESCRIPTOR_HANDLE currentDSV = GetCurrentDSV();
 
-    m_commandList->OMSetRenderTargets(1, &currentRTV, FALSE, nullptr);
+    m_commandList->OMSetRenderTargets(1, &currentRTV, FALSE, &currentDSV);
 
     const float clearColor[] = { 0.0f, 0.5f, 0.5f, 1.0f };
 
     m_commandList->ClearRenderTargetView(currentRTV, clearColor, 0, nullptr);
+    m_commandList->ClearDepthStencilView(currentDSV, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
     m_meshPass.Draw(m_commandList.Get());
 
@@ -462,6 +464,11 @@ D3D12_CPU_DESCRIPTOR_HANDLE Renderer::GetCurrentRTV() const
     rtvHandle.ptr += static_cast<SIZE_T>(m_frameIndex) * m_rtvDescSize;
 
     return rtvHandle;
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE Renderer::GetCurrentDSV() const
+{
+    return m_dsvDescHeap->GetCPUDescriptorHandleForHeapStart();
 }
 
 void Renderer::WaitForGPU()
