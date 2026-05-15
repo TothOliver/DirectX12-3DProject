@@ -17,6 +17,7 @@ void MeshPass::Draw(ID3D12GraphicsCommandList* commandList)
     commandList->RSSetScissorRects(1, &m_scissorRect);
 
     commandList->SetGraphicsRootSignature(m_rootSignature.Get());
+    commandList->SetGraphicsRootConstantBufferView(0, m_constantBuffer->GetGPUVirtualAddress());
 
     commandList->SetPipelineState(m_pipelineState.Get());
 
@@ -37,7 +38,8 @@ void MeshPass::Shutdown()
     }
 }
 
-bool MeshPass::CreateDeviceDependantResources(ID3D12Device* device, DXGI_FORMAT renderTargetFormat, UINT width, UINT height)
+bool MeshPass::CreateDeviceDependantResources(ID3D12Device* device, DXGI_FORMAT renderTargetFormat, 
+    UINT width, UINT height)
 {
     if (!CreateRootSignature(device)) { return false; }
 
@@ -181,7 +183,7 @@ bool MeshPass::CreatePipelineState(ID3D12Device* device, DXGI_FORMAT renderTarge
     D3D12_RASTERIZER_DESC rasterizerDesc = {};
 
     rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
-    rasterizerDesc.CullMode = D3D12_CULL_MODE_NONE; //D3D12_CULL_MODE_BACK test
+    rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK; //D3D12_CULL_MODE_BACK test
     rasterizerDesc.FrontCounterClockwise = FALSE;
 
     rasterizerDesc.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
