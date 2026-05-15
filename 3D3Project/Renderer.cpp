@@ -28,6 +28,8 @@ bool Renderer::Initialize(HWND window, UINT width, UINT height)
 
     if (!CreateRTV()) { return false; }
 
+    if (!CreateDepthBuffer()) { return false; }
+
     if (!CreateCommandAllocators()) { return false; }
 
     if (!CreateCommandList()) { return false; }
@@ -330,6 +332,63 @@ bool Renderer::CreateRTV()
     }
 
     OutputDebugStringW(L"RTV created.\n");
+    return true;
+}
+
+bool Renderer::CreateDepthBuffer()
+{
+    D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
+    dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+    dsvHeapDesc.NumDescriptors = 1;
+    dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    dsvHeapDesc.NodeMask = 0;
+
+    HRESULT result = m_device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_dsvDescHeap));
+
+    if (FAILED(result))
+    {
+        OutputDebugStringW(L"Failed to create DSV descriptor heap.\n");
+        return false;
+    }
+
+    D3D12_RESOURCE_DESC depthBufferDesc = {};
+    depthBufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    depthBufferDesc.Width = m_width;
+    depthBufferDesc.Height = m_height;
+    depthBufferDesc.DepthOrArraySize = 1;
+    depthBufferDesc.MipLevels = 1;
+    depthBufferDesc.Format = DepthFormat;
+    depthBufferDesc.SampleDesc.Count = 1;
+    depthBufferDesc.SampleDesc.Quality = 0;
+    depthBufferDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    depthBufferDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_CROSS_ADAPTER;
+
+    D3D12_CLEAR_VALUE clearValue = {};
+    clearValue.Format = DepthFormat;
+    clearValue.DepthStencil.Depth = 1.0f;
+    clearValue.DepthStencil.Stencil = 0;
+
+    D3D12_HEAP_PROPERTIES heapProps = {};
+    heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+    result = m_device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &depthBufferDesc, 
+        D3D12_RESOURCE_STATE_DEPTH_WRITE, &clearValue, IID_PPV_ARGS(&m_depthBuffer));
+
+    if (FAILED(result))
+    {
+        OutputDebugStringW(L"Failed to create depth buffer.\n");
+        return false;
+    }
+
+    D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+    dsvDesc.Format = DepthFormat;
+    dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+    dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+
+    m_device->CreateDepthStencilView(m_depthBuffer.Get(), &dsvDesc, 
+        m_dsvDescHeap->GetCPUDescriptorHandleForHeapStart());
+
+    OutputDebugStringW(L"Depth buffer created.\n");
     return true;
 }
 

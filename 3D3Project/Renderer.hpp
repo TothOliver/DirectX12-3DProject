@@ -24,8 +24,11 @@ private:
 	bool CreateDevice();
 	bool CreateCommandQueue();
 	bool CreateSwapChain();
+
 	bool CreateRTVHeap();
 	bool CreateRTV();
+	bool CreateDepthBuffer();
+
 	bool CreateCommandAllocators();
 	bool CreateCommandList();
 	bool CreateFence();
@@ -35,6 +38,7 @@ private:
 
 private:
 	static constexpr UINT FrameCount = 2;
+	static constexpr DXGI_FORMAT DepthFormat = DXGI_FORMAT_D32_FLOAT;
 
 	HWND m_window = nullptr;
 	UINT m_width = 0;
@@ -49,11 +53,16 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Device> m_device;
 	Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_commandQueue;
 	Microsoft::WRL::ComPtr<IDXGISwapChain4> m_swapChain;
+
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvDescHeap;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_renderTargets[FrameCount];
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_depthBuffer;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dsvDescHeap;
+
 	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_commandAllocators[FrameCount];
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;
 	Microsoft::WRL::ComPtr<ID3D12Fence> m_fence;
+
 
 	MeshPass m_meshPass;
 };
