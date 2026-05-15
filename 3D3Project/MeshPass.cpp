@@ -17,25 +17,16 @@ void MeshPass::Draw(ID3D12GraphicsCommandList* commandList)
     commandList->RSSetViewports(1, &m_viewport);
     commandList->RSSetScissorRects(1, &m_scissorRect);
 
-    commandList->SetGraphicsRootSignature(
-        m_rootSignature.Get()
-    );
+    commandList->SetGraphicsRootSignature(m_rootSignature.Get());
 
-    commandList->SetPipelineState(
-        m_pipelineState.Get()
-    );
+    commandList->SetPipelineState(m_pipelineState.Get());
 
-    commandList->IASetPrimitiveTopology(
-        D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST
-    );
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    commandList->IASetVertexBuffers(
-        0,
-        1,
-        &m_vertexBufferView
-    );
+    commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+    commandList->IASetIndexBuffer(&m_indexBufferView);
 
-    commandList->DrawInstanced(3, 1, 0, 0);
+    commandList->DrawIndexedInstanced(m_indexCount, 1, 0, 0, 0);
 }
 
 void MeshPass::Shutdown()
@@ -51,6 +42,8 @@ bool MeshPass::CreateDeviceDependantResources(ID3D12Device* device, DXGI_FORMAT 
     if (!CreatePipelineState(device, renderTargetFormat)) { return false; }
 
     if (!CreateVertexBuffer(device)) { return false; }
+
+    if (!CreateIndexBuffer(device)) { return false; }
 
     m_viewport.TopLeftX = 0;
     m_viewport.TopLeftY = 0;
@@ -171,7 +164,7 @@ bool MeshPass::CreatePipelineState(ID3D12Device* device, DXGI_FORMAT renderTarge
     D3D12_RASTERIZER_DESC rasterizerDesc = {};
 
     rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
-    rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
+    rasterizerDesc.CullMode = D3D12_CULL_MODE_NONE; //D3D12_CULL_MODE_BACK test
     rasterizerDesc.FrontCounterClockwise = FALSE;
 
     rasterizerDesc.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
@@ -250,9 +243,41 @@ bool MeshPass::CreateVertexBuffer(ID3D12Device* device)
 {
     Vertex vertices[] =
     {
-        { { 0.0f, 0.25f, 0.0f }, { 1,0,0,1 } },
-        { { 0.25f,-0.25f,0.0f }, { 0,1,0,1 } },
-        { {-0.25f,-0.25f,0.0f }, { 0,0,1,1 } },
+        //Front face
+        { { -0.5f, -0.5f, -0.5f }, { 1, 0, 0, 1 } },
+        { { -0.5f,  0.5f, -0.5f }, { 1, 0, 0, 1 } },
+        { {  0.5f,  0.5f, -0.5f }, { 1, 0, 0, 1 } },
+        { {  0.5f, -0.5f, -0.5f }, { 1, 0, 0, 1 } },
+
+        //Back face
+        { {  0.5f, -0.5f,  0.5f }, { 0, 1, 0, 1 } },
+        { {  0.5f,  0.5f,  0.5f }, { 0, 1, 0, 1 } },
+        { { -0.5f,  0.5f,  0.5f }, { 0, 1, 0, 1 } },
+        { { -0.5f, -0.5f,  0.5f }, { 0, 1, 0, 1 } },
+
+        //Left face
+        { { -0.5f, -0.5f,  0.5f }, { 0, 0, 1, 1 } },
+        { { -0.5f,  0.5f,  0.5f }, { 0, 0, 1, 1 } },
+        { { -0.5f,  0.5f, -0.5f }, { 0, 0, 1, 1 } },
+        { { -0.5f, -0.5f, -0.5f }, { 0, 0, 1, 1 } },
+
+        //Right face
+        { {  0.5f, -0.5f, -0.5f }, { 1, 1, 0, 1 } },
+        { {  0.5f,  0.5f, -0.5f }, { 1, 1, 0, 1 } },
+        { {  0.5f,  0.5f,  0.5f }, { 1, 1, 0, 1 } },
+        { {  0.5f, -0.5f,  0.5f }, { 1, 1, 0, 1 } },
+
+        //Top face
+        { { -0.5f,  0.5f, -0.5f }, { 1, 0, 1, 1 } },
+        { { -0.5f,  0.5f,  0.5f }, { 1, 0, 1, 1 } },
+        { {  0.5f,  0.5f,  0.5f }, { 1, 0, 1, 1 } },
+        { {  0.5f,  0.5f, -0.5f }, { 1, 0, 1, 1 } },
+
+        //Bottom face
+        { { -0.5f, -0.5f,  0.5f }, { 0, 1, 1, 1 } },
+        { { -0.5f, -0.5f, -0.5f }, { 0, 1, 1, 1 } },
+        { {  0.5f, -0.5f, -0.5f }, { 0, 1, 1, 1 } },
+        { {  0.5f, -0.5f,  0.5f }, { 0, 1, 1, 1 } },
     };
 
     const UINT bufferSize = sizeof(vertices);
@@ -299,5 +324,83 @@ bool MeshPass::CreateVertexBuffer(ID3D12Device* device)
 
     m_vertexBufferView.SizeInBytes = bufferSize;
 
+    return true;
+}
+
+bool MeshPass::CreateIndexBuffer(ID3D12Device* device)
+{
+    uint16_t indices[] =
+    {
+        //Front face
+        0, 1, 2,
+        0, 2, 3,
+
+        //Back face
+        4, 5, 6,
+        4, 6, 7,
+
+        //Left face
+        8, 9, 10,
+        8, 10, 11,
+
+        //Right face
+        12, 13, 14,
+        12, 14, 15,
+
+        //Top face
+        16, 17, 18,
+        16, 18, 19,
+
+        //Bottom face
+        20, 21, 22,
+        20, 22, 23,
+    };
+
+    m_indexCount = _countof(indices);
+
+    const UINT bufferSize = sizeof(indices);
+
+    D3D12_HEAP_PROPERTIES heapProps = {};
+    heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+
+    D3D12_RESOURCE_DESC resourceDesc = {};
+    resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    resourceDesc.Width = bufferSize;
+    resourceDesc.Height = 1;
+    resourceDesc.DepthOrArraySize = 1;
+    resourceDesc.MipLevels = 1;
+    resourceDesc.SampleDesc.Count = 1;
+    resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+    HRESULT result = device->CreateCommittedResource(
+        &heapProps, D3D12_HEAP_FLAG_NONE, &resourceDesc, 
+        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&m_indexBuffer));
+
+    if (FAILED(result))
+    {
+        OutputDebugStringW(L"Failed to create index buffer.\n");
+        return false;
+    }
+
+    void* mappedData = nullptr;
+
+    D3D12_RANGE readRange = {};
+    result = m_indexBuffer->Map(0, &readRange, &mappedData);
+
+    if (FAILED(result))
+    {
+        OutputDebugStringW(L"Failed to create map index buffer.\n");
+        return false;
+    }
+
+    memcpy(mappedData, indices, sizeof(indices));
+
+    m_indexBuffer->Unmap(0, nullptr);
+
+    m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
+    m_indexBufferView.Format = DXGI_FORMAT_R16_UINT;
+    m_indexBufferView.SizeInBytes = bufferSize;
+
+    OutputDebugStringW(L"Index buffer created.\n");
     return true;
 }
