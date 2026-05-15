@@ -24,6 +24,7 @@ private:
 	bool CreateIndexBuffer(ID3D12Device* device);
 	bool CreateConstantBuffer(ID3D12Device* device, UINT width, UINT height);
 	void UpdateConstantBuffer(UINT width, UINT height);
+	bool CreateSRVHeap(ID3D12Device* device);
 
 private:
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
@@ -33,6 +34,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_indexBuffer;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_constantBuffer;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_srvHeap;
 	TransformConstantBuffer* m_mappedConstantBuffer = nullptr;
 
 	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
@@ -43,7 +45,8 @@ private:
 
 	struct Vertex
 	{
-		float position[3];
-		float color[4];
+		DirectX::XMFLOAT3 Position;
+		DirectX::XMFLOAT4 Color;
+		DirectX::XMFLOAT2 TexCoord;
 	};
 };

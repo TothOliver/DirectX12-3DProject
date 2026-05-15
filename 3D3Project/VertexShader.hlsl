@@ -7,12 +7,14 @@ struct VSInput
 {
     float3 position : POSITION;
     float4 color : COLOR;
+    float2 texCoord : TEXCOORD;
 };
 
 struct PSInput
 {
     float4 position : SV_POSITION;
     float4 color : COLOR;
+    float2 texCoord : TEXCOORD;
 };
 
 PSInput VSMain(VSInput input)
@@ -21,6 +23,7 @@ PSInput VSMain(VSInput input)
 
     output.position = mul(WorldViewProjection, float4(input.position, 1.0f));
     output.color = input.color;
+    output.texCoord = input.texCoord;
 
     return output;
 }

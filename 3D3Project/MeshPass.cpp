@@ -16,8 +16,20 @@ void MeshPass::Draw(ID3D12GraphicsCommandList* commandList)
     commandList->RSSetViewports(1, &m_viewport);
     commandList->RSSetScissorRects(1, &m_scissorRect);
 
+    ID3D12DescriptorHeap* heaps[] =
+    {
+        m_srvHeap.Get()
+    };
+
+    commandList->SetDescriptorHeaps(1, heaps);
+
     commandList->SetGraphicsRootSignature(m_rootSignature.Get());
     commandList->SetGraphicsRootConstantBufferView(0, m_constantBuffer->GetGPUVirtualAddress());
+
+    commandList->SetGraphicsRootDescriptorTable(
+        1,
+        m_srvHeap->GetGPUDescriptorHandleForHeapStart()
+    );
 
     commandList->SetPipelineState(m_pipelineState.Get());
 
@@ -53,6 +65,8 @@ bool MeshPass::CreateDeviceDependantResources(ID3D12Device* device, DXGI_FORMAT 
 
     if (!CreateConstantBuffer(device, width, height)) { return false; }
 
+    if (!CreateSRVHeap(device)) { return false; }
+
     m_viewport.TopLeftX = 0;
     m_viewport.TopLeftY = 0;
     m_viewport.Width = static_cast<float>(width);
@@ -70,18 +84,62 @@ bool MeshPass::CreateDeviceDependantResources(ID3D12Device* device, DXGI_FORMAT 
 
 bool MeshPass::CreateRootSignature(ID3D12Device* device)
 {
-    D3D12_ROOT_PARAMETER rootParameters[1] = {};
-    rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    D3D12_DESCRIPTOR_RANGE srvRange = {};
+
+    srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    srvRange.NumDescriptors = 1;
+    srvRange.BaseShaderRegister = 0;
+    srvRange.RegisterSpace = 0;
+    srvRange.OffsetInDescriptorsFromTableStart =
+        D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+    D3D12_ROOT_PARAMETER rootParameters[2] = {};
+
+    // CBV (b0)
+    rootParameters[0].ParameterType =
+        D3D12_ROOT_PARAMETER_TYPE_CBV;
+
     rootParameters[0].Descriptor.ShaderRegister = 0;
     rootParameters[0].Descriptor.RegisterSpace = 0;
-    rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+    rootParameters[0].ShaderVisibility =
+        D3D12_SHADER_VISIBILITY_VERTEX;
+
+    // SRV Table (t0)
+    rootParameters[1].ParameterType =
+        D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+
+    rootParameters[1].DescriptorTable.NumDescriptorRanges = 1;
+    rootParameters[1].DescriptorTable.pDescriptorRanges =
+        &srvRange;
+
+    rootParameters[1].ShaderVisibility =
+        D3D12_SHADER_VISIBILITY_PIXEL;
+
+    // Sampler
+    D3D12_STATIC_SAMPLER_DESC samplerDesc = {};
+
+    samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+
+    samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+    samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+    samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+
+    samplerDesc.ShaderRegister = 0;
+    samplerDesc.RegisterSpace = 0;
+
+    samplerDesc.ShaderVisibility =
+        D3D12_SHADER_VISIBILITY_PIXEL;
 
     D3D12_ROOT_SIGNATURE_DESC desc = {};
-    desc.NumParameters = 1;
+
+    desc.NumParameters = 2;
     desc.pParameters = rootParameters;
-    desc.NumStaticSamplers = 0;
-    desc.pStaticSamplers = nullptr;
-    desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+    desc.NumStaticSamplers = 1;
+    desc.pStaticSamplers = &samplerDesc;
+
+    desc.Flags =
+        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
     Microsoft::WRL::ComPtr<ID3DBlob> signature;
     Microsoft::WRL::ComPtr<ID3DBlob> error;
@@ -95,7 +153,13 @@ bool MeshPass::CreateRootSignature(ID3D12Device* device)
 
     if (FAILED(result))
     {
-        OutputDebugStringW(L"Failed to serialize root signature.\n");
+        if (error)
+        {
+            OutputDebugStringA(
+                (char*)error->GetBufferPointer()
+            );
+        }
+
         return false;
     }
 
@@ -175,6 +239,16 @@ bool MeshPass::CreatePipelineState(ID3D12Device* device, DXGI_FORMAT renderTarge
             DXGI_FORMAT_R32G32B32A32_FLOAT,
             0,
             12,
+            D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+            0
+        },
+
+        {
+            "TEXCOORD",
+            0,
+            DXGI_FORMAT_R32G32_FLOAT,
+            0,
+            28,
             D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
             0
         }
@@ -485,4 +559,24 @@ void MeshPass::UpdateConstantBuffer(UINT width, UINT height)
 
     XMStoreFloat4x4(&m_mappedConstantBuffer->WorldViewProjection, XMMatrixTranspose(worldViewProjection));
 
+}
+
+bool  MeshPass::CreateSRVHeap(ID3D12Device* device)
+{
+    D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+
+    heapDesc.NumDescriptors = 1;
+    heapDesc.Type =
+        D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+
+    heapDesc.Flags =
+        D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+
+    HRESULT result =
+        device->CreateDescriptorHeap(
+            &heapDesc,
+            IID_PPV_ARGS(&m_srvHeap)
+        );
+
+    return SUCCEEDED(result);
 }
