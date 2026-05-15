@@ -361,7 +361,7 @@ bool Renderer::CreateDepthBuffer()
     depthBufferDesc.SampleDesc.Count = 1;
     depthBufferDesc.SampleDesc.Quality = 0;
     depthBufferDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-    depthBufferDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_CROSS_ADAPTER;
+    depthBufferDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 
     D3D12_CLEAR_VALUE clearValue = {};
     clearValue.Format = DepthFormat;
