@@ -1,7 +1,6 @@
 #include "MeshPass.hpp"
 
 #include <d3dcompiler.h>
-#include <DirectXMath.h>
 #pragma comment(lib, "d3dcompiler.lib")
 
 bool MeshPass::Initialize(ID3D12Device* device, DXGI_FORMAT renderTargetFormat, UINT width, UINT height)
@@ -62,7 +61,17 @@ bool MeshPass::CreateDeviceDependantResources(ID3D12Device* device, DXGI_FORMAT 
 
 bool MeshPass::CreateRootSignature(ID3D12Device* device)
 {
+    D3D12_ROOT_PARAMETER rootParameters[1] = {};
+    rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParameters[0].Descriptor.ShaderRegister = 0;
+    rootParameters[0].Descriptor.RegisterSpace = 0;
+    rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
     D3D12_ROOT_SIGNATURE_DESC desc = {};
+    desc.NumParameters = 1;
+    desc.pParameters = rootParameters;
+    desc.NumStaticSamplers = 0;
+    desc.pStaticSamplers = nullptr;
     desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
     Microsoft::WRL::ComPtr<ID3DBlob> signature;
@@ -77,6 +86,7 @@ bool MeshPass::CreateRootSignature(ID3D12Device* device)
 
     if (FAILED(result))
     {
+        OutputDebugStringW(L"Failed to serialize root signature.\n");
         return false;
     }
 

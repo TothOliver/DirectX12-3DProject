@@ -2,6 +2,11 @@
 
 #include <d3d12.h>
 #include <wrl/client.h>
+#include <DirectXMath.h>
+
+struct TransformConstantBuffer {
+	DirectX::XMFLOAT4X4 WorldViewProjection;
+};
 
 class MeshPass
 {
@@ -17,6 +22,8 @@ private:
 	bool CreatePipelineState(ID3D12Device* device, DXGI_FORMAT renderTargetFormat);
 	bool CreateVertexBuffer(ID3D12Device* device);
 	bool CreateIndexBuffer(ID3D12Device* device);
+	bool CreateConstantBuffer(ID3D12Device* device, UINT width, UINT height);
+	void UpdateConstantBuffer(UINT width, UINT height);
 
 private:
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
@@ -25,12 +32,13 @@ private:
 	Microsoft::WRL::ComPtr<ID3DBlob> m_pixelShader;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_indexBuffer;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_constantBuffer;
+	TransformConstantBuffer* m_mappedConstantBuffer = nullptr;
 
 	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
 	D3D12_VIEWPORT m_viewport;
 	D3D12_RECT m_scissorRect;
-
 	UINT m_indexCount = 0;
 
 	struct Vertex
