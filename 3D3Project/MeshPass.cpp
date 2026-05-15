@@ -183,7 +183,7 @@ bool MeshPass::CreatePipelineState(ID3D12Device* device, DXGI_FORMAT renderTarge
     D3D12_RASTERIZER_DESC rasterizerDesc = {};
 
     rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
-    rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK; //D3D12_CULL_MODE_BACK test
+    rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK; //D3D12_CULL_MODE_NONE test
     rasterizerDesc.FrontCounterClockwise = FALSE;
 
     rasterizerDesc.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
