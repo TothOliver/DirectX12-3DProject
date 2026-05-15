@@ -30,6 +30,11 @@ void MeshPass::Draw(ID3D12GraphicsCommandList* commandList)
 
 void MeshPass::Shutdown()
 {
+    if (m_constantBuffer && m_mappedConstantBuffer)
+    {
+        m_constantBuffer->Unmap(0, nullptr);
+        m_mappedConstantBuffer = nullptr;
+    }
 }
 
 bool MeshPass::CreateDeviceDependantResources(ID3D12Device* device, DXGI_FORMAT renderTargetFormat, UINT width, UINT height)
@@ -43,6 +48,8 @@ bool MeshPass::CreateDeviceDependantResources(ID3D12Device* device, DXGI_FORMAT 
     if (!CreateVertexBuffer(device)) { return false; }
 
     if (!CreateIndexBuffer(device)) { return false; }
+
+    if (!CreateConstantBuffer(device, width, height)) { return false; }
 
     m_viewport.TopLeftX = 0;
     m_viewport.TopLeftY = 0;
@@ -413,4 +420,67 @@ bool MeshPass::CreateIndexBuffer(ID3D12Device* device)
 
     OutputDebugStringW(L"Index buffer created.\n");
     return true;
+}
+
+bool MeshPass::CreateConstantBuffer(ID3D12Device* device, UINT width, UINT height)
+{
+    const UINT constantBufferSize = (sizeof(TransformConstantBuffer) + 255) & ~255;
+
+    D3D12_HEAP_PROPERTIES heapProps = {};
+    heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+
+    D3D12_RESOURCE_DESC resourceDesc = {};
+    resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    resourceDesc.Width = constantBufferSize;
+    resourceDesc.Height = 1;
+    resourceDesc.DepthOrArraySize = 1;
+    resourceDesc.MipLevels = 1;
+    resourceDesc.SampleDesc.Count = 1;
+    resourceDesc.SampleDesc.Quality = 0;
+    resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+    HRESULT result = device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, 
+        &resourceDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&m_constantBuffer));
+
+    if (FAILED(result))
+    {
+        OutputDebugStringW(L"Failed to create constant buffer.\n");
+        return false;
+    }
+
+    D3D12_RANGE readRange = {};
+    result = m_constantBuffer->Map(0, &readRange, reinterpret_cast<void**>(&m_mappedConstantBuffer));
+
+    if (FAILED(result))
+    {
+        OutputDebugStringW(L"Failed to map constant buffer.\n");
+        return false;
+    }
+
+    UpdateConstantBuffer(width, height);
+
+    OutputDebugStringW(L"Constant buffer created.\n");
+    return true;
+}
+
+void MeshPass::UpdateConstantBuffer(UINT width, UINT height)
+{
+    using namespace DirectX;
+
+    XMMATRIX world = XMMatrixIdentity();
+
+    XMVECTOR eyePosition = XMVectorSet(0.0f, 0.0f, -3.0f, 1.0f);
+    XMVECTOR focusPoint = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+    XMVECTOR upDirection = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+
+    XMMATRIX view = XMMatrixLookAtLH(eyePosition, focusPoint, upDirection);
+
+    float aspectRatio = static_cast<float>(width) / static_cast<float>(height);
+
+    XMMATRIX projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(60.0f), aspectRatio, 0.1f, 100.0f);
+
+    XMMATRIX worldViewProjection = world * view * projection;
+
+    XMStoreFloat4x4(&m_mappedConstantBuffer->WorldViewProjection, XMMatrixTranspose(worldViewProjection));
+
 }
