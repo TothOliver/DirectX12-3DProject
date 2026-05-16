@@ -7,6 +7,8 @@ bool MeshPass::Initialize(ID3D12Device* device, DXGI_FORMAT renderTargetFormat, 
 {
     if (!CreateDeviceDependantResources(device, renderTargetFormat, width, height)) { return false; }
 
+    m_aspectRatio = static_cast<float>(width) / static_cast<float>(height);
+
     OutputDebugStringW(L"TrianglePass initialized.\n");
     return true;
 }
@@ -39,6 +41,13 @@ void MeshPass::Draw(ID3D12GraphicsCommandList* commandList)
     commandList->IASetIndexBuffer(&m_indexBufferView);
 
     commandList->DrawIndexedInstanced(m_indexCount, 1, 0, 0, 0);
+}
+
+void MeshPass::Update(float deltaTime)
+{
+    m_rotationAngle += deltaTime;
+
+    UpdateConstantBuffer();
 }
 
 void MeshPass::Shutdown()
@@ -537,17 +546,17 @@ bool MeshPass::CreateConstantBuffer(ID3D12Device* device, UINT width, UINT heigh
         return false;
     }
 
-    UpdateConstantBuffer(width, height);
+    UpdateConstantBuffer();
 
     OutputDebugStringW(L"Constant buffer created.\n");
     return true;
 }
 
-void MeshPass::UpdateConstantBuffer(UINT width, UINT height)
+void MeshPass::UpdateConstantBuffer()
 {
     using namespace DirectX;
 
-    XMMATRIX world = XMMatrixIdentity();
+    XMMATRIX world = XMMatrixRotationX(m_rotationAngle * 0.5f) * XMMatrixRotationY(m_rotationAngle);
 
     XMVECTOR eyePosition = XMVectorSet(0.0f, 0.0f, -3.0f, 1.0f);
     XMVECTOR focusPoint = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
@@ -555,9 +564,7 @@ void MeshPass::UpdateConstantBuffer(UINT width, UINT height)
 
     XMMATRIX view = XMMatrixLookAtLH(eyePosition, focusPoint, upDirection);
 
-    float aspectRatio = static_cast<float>(width) / static_cast<float>(height);
-
-    XMMATRIX projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(60.0f), aspectRatio, 0.1f, 100.0f);
+    XMMATRIX projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(60.0f), m_aspectRatio, 0.1f, 100.0f);
 
     XMMATRIX worldViewProjection = world * view * projection;
 

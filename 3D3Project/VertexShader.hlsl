@@ -21,7 +21,7 @@ PSInput VSMain(VSInput input)
 {
     PSInput output;
 
-    output.position = mul(WorldViewProjection, float4(input.position, 1.0f));
+    output.position = mul(float4(input.position, 1.0f), WorldViewProjection);
     output.color = input.color;
     output.texCoord = input.texCoord;
 

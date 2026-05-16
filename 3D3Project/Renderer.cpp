@@ -85,6 +85,7 @@ void Renderer::Render()
     m_commandList->ClearDepthStencilView(currentDSV, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
     m_meshPass.Draw(m_commandList.Get());
+    m_meshPass.Update(1.0f / 60.0f);
 
     D3D12_RESOURCE_BARRIER barrierPresent = {};
     barrierPresent.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;

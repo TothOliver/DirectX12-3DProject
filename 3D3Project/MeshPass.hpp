@@ -13,6 +13,7 @@ class MeshPass
 public:
 	bool Initialize(ID3D12Device* device, DXGI_FORMAT renderTargetFormat, UINT width, UINT height);
 	void Draw(ID3D12GraphicsCommandList* commandList);
+	void Update(float deltaTime);
 	void Shutdown();
 
 private:
@@ -23,7 +24,7 @@ private:
 	bool CreateVertexBuffer(ID3D12Device* device);
 	bool CreateIndexBuffer(ID3D12Device* device);
 	bool CreateConstantBuffer(ID3D12Device* device, UINT width, UINT height);
-	void UpdateConstantBuffer(UINT width, UINT height);
+	void UpdateConstantBuffer();
 	bool CreateSRVHeap(ID3D12Device* device);
 
 private:
@@ -42,6 +43,9 @@ private:
 	D3D12_VIEWPORT m_viewport;
 	D3D12_RECT m_scissorRect;
 	UINT m_indexCount = 0;
+
+	float m_rotationAngle = 0.0f;
+	float m_aspectRatio = 1.0f;
 
 	struct Vertex
 	{
