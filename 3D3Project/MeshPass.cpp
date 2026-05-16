@@ -9,7 +9,7 @@ bool MeshPass::Initialize(ID3D12Device* device, DXGI_FORMAT renderTargetFormat, 
 
     m_aspectRatio = static_cast<float>(width) / static_cast<float>(height);
 
-    OutputDebugStringW(L"TrianglePass initialized.\n");
+    OutputDebugStringW(L"MeshPass initialized.\n");
     return true;
 }
 
@@ -26,7 +26,6 @@ void MeshPass::Draw(ID3D12GraphicsCommandList* commandList)
     commandList->SetDescriptorHeaps(1, heaps);
 
     commandList->SetGraphicsRootSignature(m_rootSignature.Get());
-    commandList->SetGraphicsRootConstantBufferView(0, m_constantBuffer->GetGPUVirtualAddress());
 
     commandList->SetGraphicsRootDescriptorTable(
         1,
@@ -40,7 +39,17 @@ void MeshPass::Draw(ID3D12GraphicsCommandList* commandList)
     commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
     commandList->IASetIndexBuffer(&m_indexBufferView);
 
-    commandList->DrawIndexedInstanced(m_indexCount, 1, 0, 0, 0);
+    D3D12_GPU_VIRTUAL_ADDRESS constantBufferAdress = m_constantBuffer->GetGPUVirtualAddress();
+
+    for (UINT i = 0; i < static_cast<UINT>(m_cubes.size()); ++i)
+    {
+        D3D12_GPU_VIRTUAL_ADDRESS cubeConstantBufferAdress =
+            constantBufferAdress + i * m_constantBufferStride;
+
+        commandList->SetGraphicsRootConstantBufferView(0, cubeConstantBufferAdress);
+
+        commandList->DrawIndexedInstanced(m_indexCount, 1, 0, 0, 0);
+    }
 }
 
 void MeshPass::Update(float deltaTime)
@@ -52,10 +61,10 @@ void MeshPass::Update(float deltaTime)
 
 void MeshPass::Shutdown()
 {
-    if (m_constantBuffer && m_mappedConstantBuffer)
+    if (m_constantBuffer && m_mappedConstantBufferData)
     {
         m_constantBuffer->Unmap(0, nullptr);
-        m_mappedConstantBuffer = nullptr;
+        m_mappedConstantBufferData = nullptr;
     }
 }
 
@@ -67,6 +76,8 @@ bool MeshPass::CreateDeviceDependantResources(ID3D12Device* device, DXGI_FORMAT 
     if (!CreateShaders()) { return false; }
 
     if (!CreatePipelineState(device, renderTargetFormat)) { return false; }
+
+    if (!CreateCubeInstances()) { return false; }
 
     if (!CreateVertexBuffer(device)) { return false; }
 
@@ -513,7 +524,8 @@ bool MeshPass::CreateIndexBuffer(ID3D12Device* device)
 
 bool MeshPass::CreateConstantBuffer(ID3D12Device* device, UINT width, UINT height)
 {
-    const UINT constantBufferSize = (sizeof(TransformConstantBuffer) + 255) & ~255;
+    m_constantBufferStride = (sizeof(TransformConstantBuffer) + 255) & ~255;
+    const UINT constantBufferSize = m_constantBufferStride * static_cast<UINT>(m_cubes.size());
 
     D3D12_HEAP_PROPERTIES heapProps = {};
     heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
@@ -538,7 +550,7 @@ bool MeshPass::CreateConstantBuffer(ID3D12Device* device, UINT width, UINT heigh
     }
 
     D3D12_RANGE readRange = {};
-    result = m_constantBuffer->Map(0, &readRange, reinterpret_cast<void**>(&m_mappedConstantBuffer));
+    result = m_constantBuffer->Map(0, &readRange, reinterpret_cast<void**>(&m_mappedConstantBufferData));
 
     if (FAILED(result))
     {
@@ -556,8 +568,6 @@ void MeshPass::UpdateConstantBuffer()
 {
     using namespace DirectX;
 
-    XMMATRIX world = XMMatrixRotationX(m_rotationAngle * 0.5f) * XMMatrixRotationY(m_rotationAngle);
-
     XMVECTOR eyePosition = XMVectorSet(0.0f, 0.0f, -3.0f, 1.0f);
     XMVECTOR focusPoint = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
     XMVECTOR upDirection = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
@@ -566,10 +576,22 @@ void MeshPass::UpdateConstantBuffer()
 
     XMMATRIX projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(60.0f), m_aspectRatio, 0.1f, 100.0f);
 
-    XMMATRIX worldViewProjection = world * view * projection;
+    for (UINT i = 0; i < static_cast<UINT>(m_cubes.size()); ++i)
+    {
+        const CubeInstance& cube = m_cubes[i];
 
-    XMStoreFloat4x4(&m_mappedConstantBuffer->WorldViewProjection, XMMatrixTranspose(worldViewProjection));
+        XMMATRIX scale = XMMatrixScaling(cube.Scale, cube.Scale, cube.Scale);
+        XMMATRIX rotation = XMMatrixRotationX(m_rotationAngle * 0.5f) * XMMatrixRotationY(m_rotationAngle);
+        XMMATRIX translation = XMMatrixTranslation(cube.Position.x, cube.Position.y, cube.Position.z);
+        XMMATRIX world = scale * rotation * translation;
 
+        XMMATRIX worldViewProjection = world * view * projection;
+
+        uint8_t* destination = m_mappedConstantBufferData + i * m_constantBufferStride;
+        TransformConstantBuffer* constantBuffer = reinterpret_cast<TransformConstantBuffer*>(destination);
+
+        XMStoreFloat4x4(&constantBuffer->WorldViewProjection, XMMatrixTranspose(worldViewProjection));
+    }
 }
 
 bool  MeshPass::CreateSRVHeap(ID3D12Device* device)
@@ -590,4 +612,32 @@ bool  MeshPass::CreateSRVHeap(ID3D12Device* device)
         );
 
     return SUCCEEDED(result);
+}
+
+bool MeshPass::CreateCubeInstances()
+{
+    const int gridSize = 10;
+    const float spacing = 1.5f;
+
+    m_cubes.clear();
+    m_cubes.reserve(gridSize * gridSize);
+
+    const float offset = (gridSize - 1) * spacing * 0.5f;
+
+    for (int z = 0; z < gridSize; ++z)
+    {
+        for (int x = 0; x < gridSize; ++x)
+        {
+            CubeInstance cube = {};
+
+            cube.Position = DirectX::XMFLOAT3(x * spacing - offset, 0.0f, z * spacing);
+            cube.RotationAngle = 0.0f;
+            cube.RotationSpeed = 0.5f + 0.5f * static_cast<float>((x + z) % 10);
+            cube.Scale = 1.0f;
+
+            m_cubes.push_back(cube);
+        }
+    }
+
+    return true;
 }

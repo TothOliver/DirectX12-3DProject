@@ -16,6 +16,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         std::cerr << "Error: SetupWindow" << std::endl;
         return -1;
     }
+
     Renderer renderer;
     renderer.Initialize(window, WIDTH, HEIGHT);
 
