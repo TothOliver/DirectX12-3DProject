@@ -1,6 +1,8 @@
 #include "MeshPass.hpp"
 
 #include <d3dcompiler.h>
+#include <cmath>
+
 #pragma comment(lib, "d3dcompiler.lib")
 
 bool MeshPass::Initialize(ID3D12Device* device, DXGI_FORMAT renderTargetFormat, UINT width, UINT height)
@@ -77,7 +79,7 @@ bool MeshPass::CreateDeviceDependantResources(ID3D12Device* device, DXGI_FORMAT 
 
     if (!CreatePipelineState(device, renderTargetFormat)) { return false; }
 
-    if (!CreateCubeInstances()) { return false; }
+    if (!CreateCubeInstances(CubeCount)) { return false; }
 
     if (!CreateVertexBuffer(device)) { return false; }
 
@@ -356,34 +358,41 @@ bool MeshPass::CreatePipelineState(ID3D12Device* device, DXGI_FORMAT renderTarge
     return SUCCEEDED(result);
 }
 
-bool MeshPass::CreateCubeInstances()
+bool MeshPass::CreateCubeInstances(UINT cubeCount)
 {
-    const int gridSize = 10;
-    const float spacing = 1.5f;
-
     m_cubes.clear();
-    m_cubes.reserve(gridSize * gridSize);
 
+    if (cubeCount == 0)
+        return true;
+
+    m_cubes.reserve(cubeCount);
+
+    const UINT gridSize = static_cast<UINT>(std::ceil(std::sqrt(static_cast<float>(cubeCount))));
+    const float spacing = 1.8f;
     const float offset = (gridSize - 1) * spacing * 0.5f;
 
-    for (int z = 0; z < gridSize; ++z)
+    for (int i = 0; i < cubeCount; ++i)
     {
-        for (int x = 0; x < gridSize; ++x)
-        {
-            CubeInstance cube = {};
+        UINT x = i % gridSize;
+        UINT y = i / gridSize;
 
-            cube.Position = DirectX::XMFLOAT3(x * spacing - offset, 0.0f, z * spacing);
-            cube.RotationAngle = 0.0f;
-            cube.RotationSpeed = 0.5f + 0.5f * static_cast<float>((x + z) % 10);
-            cube.Scale = 1.0f;
+        CubeInstance cube = {};
 
-            m_cubes.push_back(cube);
-        }
+        cube.Position = DirectX::XMFLOAT3(
+            static_cast<float>(x) * spacing - offset,
+            static_cast<float>(y)* spacing,
+            0.0f
+        );
+        
+        cube.RotationAngle = 0.0f;
+        cube.RotationSpeed = 0.5f + 0.5f * static_cast<float>(i % 10);
+        cube.Scale = 1.0f;
+        
+        m_cubes.push_back(cube);
     }
 
     return true;
 }
-
 
 bool MeshPass::CreateVertexBuffer(ID3D12Device* device)
 {
@@ -617,7 +626,7 @@ void MeshPass::UpdateConstantBuffer()
 {
     using namespace DirectX;
 
-    XMVECTOR eyePosition = XMVectorSet(0.0f, 0.0f, -3.0f, 1.0f);
+    XMVECTOR eyePosition = XMVectorSet(0.0f, -10.0f, -10.0f, 1.0f);
     XMVECTOR focusPoint = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
     XMVECTOR upDirection = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 

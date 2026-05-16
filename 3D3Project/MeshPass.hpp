@@ -31,7 +31,7 @@ private:
 	bool CreateRootSignature(ID3D12Device* device);
 	bool CreateShaders();
 	bool CreatePipelineState(ID3D12Device* device, DXGI_FORMAT renderTargetFormat);
-	bool CreateCubeInstances();
+	bool CreateCubeInstances(UINT cubeCount);
 	bool CreateVertexBuffer(ID3D12Device* device);
 	bool CreateIndexBuffer(ID3D12Device* device);
 	bool CreateConstantBuffer(ID3D12Device* device, UINT width, UINT height);
@@ -41,6 +41,8 @@ private:
 
 
 private:
+	static constexpr UINT CubeCount = 500;
+
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
 	Microsoft::WRL::ComPtr<ID3DBlob> m_vertexShader;
