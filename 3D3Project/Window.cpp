@@ -34,7 +34,7 @@ bool SetupWindow(HINSTANCE instance, UINT width, UINT height, int nCmdShow, HWND
         return false;
     }
 
-    window = CreateWindowExW(0, CLASS_NAME, L"3D Project", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, width, height, nullptr, nullptr, instance, nullptr);
+    window = CreateWindowExW(0, CLASS_NAME, L"DirectX12 Window", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, width, height, nullptr, nullptr, instance, nullptr);
 
     if (window == nullptr) 
     {
