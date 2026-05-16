@@ -356,6 +356,35 @@ bool MeshPass::CreatePipelineState(ID3D12Device* device, DXGI_FORMAT renderTarge
     return SUCCEEDED(result);
 }
 
+bool MeshPass::CreateCubeInstances()
+{
+    const int gridSize = 10;
+    const float spacing = 1.5f;
+
+    m_cubes.clear();
+    m_cubes.reserve(gridSize * gridSize);
+
+    const float offset = (gridSize - 1) * spacing * 0.5f;
+
+    for (int z = 0; z < gridSize; ++z)
+    {
+        for (int x = 0; x < gridSize; ++x)
+        {
+            CubeInstance cube = {};
+
+            cube.Position = DirectX::XMFLOAT3(x * spacing - offset, 0.0f, z * spacing);
+            cube.RotationAngle = 0.0f;
+            cube.RotationSpeed = 0.5f + 0.5f * static_cast<float>((x + z) % 10);
+            cube.Scale = 1.0f;
+
+            m_cubes.push_back(cube);
+        }
+    }
+
+    return true;
+}
+
+
 bool MeshPass::CreateVertexBuffer(ID3D12Device* device)
 {
     Vertex vertices[] =
@@ -564,6 +593,26 @@ bool MeshPass::CreateConstantBuffer(ID3D12Device* device, UINT width, UINT heigh
     return true;
 }
 
+bool  MeshPass::CreateSRVHeap(ID3D12Device* device)
+{
+    D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+
+    heapDesc.NumDescriptors = 1;
+    heapDesc.Type =
+        D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+
+    heapDesc.Flags =
+        D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+
+    HRESULT result =
+        device->CreateDescriptorHeap(
+            &heapDesc,
+            IID_PPV_ARGS(&m_srvHeap)
+        );
+
+    return SUCCEEDED(result);
+}
+
 void MeshPass::UpdateConstantBuffer()
 {
     using namespace DirectX;
@@ -594,50 +643,4 @@ void MeshPass::UpdateConstantBuffer()
     }
 }
 
-bool  MeshPass::CreateSRVHeap(ID3D12Device* device)
-{
-    D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
 
-    heapDesc.NumDescriptors = 1;
-    heapDesc.Type =
-        D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-
-    heapDesc.Flags =
-        D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-
-    HRESULT result =
-        device->CreateDescriptorHeap(
-            &heapDesc,
-            IID_PPV_ARGS(&m_srvHeap)
-        );
-
-    return SUCCEEDED(result);
-}
-
-bool MeshPass::CreateCubeInstances()
-{
-    const int gridSize = 10;
-    const float spacing = 1.5f;
-
-    m_cubes.clear();
-    m_cubes.reserve(gridSize * gridSize);
-
-    const float offset = (gridSize - 1) * spacing * 0.5f;
-
-    for (int z = 0; z < gridSize; ++z)
-    {
-        for (int x = 0; x < gridSize; ++x)
-        {
-            CubeInstance cube = {};
-
-            cube.Position = DirectX::XMFLOAT3(x * spacing - offset, 0.0f, z * spacing);
-            cube.RotationAngle = 0.0f;
-            cube.RotationSpeed = 0.5f + 0.5f * static_cast<float>((x + z) % 10);
-            cube.Scale = 1.0f;
-
-            m_cubes.push_back(cube);
-        }
-    }
-
-    return true;
-}
