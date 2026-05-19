@@ -1,6 +1,5 @@
 #include "Renderer.hpp"
 #include <string>
-
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 
@@ -9,6 +8,7 @@ bool Renderer::Initialize(HWND window, UINT width, UINT height)
     m_window = window;
     m_width = width;
     m_height = height;
+    
 
 #if defined(_DEBUG)
     EnableDebugLayer();
@@ -42,12 +42,21 @@ bool Renderer::Initialize(HWND window, UINT width, UINT height)
         return false;
     }
 
+    m_previousTime = Clock::now();
+
     OutputDebugStringW(L"Renderer initialized.\n");
     return true;
 }
 
 void Renderer::Render()
 {
+    auto currentTime = Clock::now();
+
+    m_deltaTime = std::chrono::duration<float>(
+        currentTime - m_previousTime).count();
+
+    m_previousTime = currentTime;
+
     HRESULT result = m_commandAllocators[m_frameIndex]->Reset();
 
     if (FAILED(result))
@@ -84,7 +93,7 @@ void Renderer::Render()
     m_commandList->ClearRenderTargetView(currentRTV, clearColor, 0, nullptr);
     m_commandList->ClearDepthStencilView(currentDSV, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
-    m_meshPass.Update(1.0f / 60.0f);
+    m_meshPass.Update(m_deltaTime);
     m_meshPass.Draw(m_commandList.Get());
 
 

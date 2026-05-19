@@ -5,7 +5,7 @@
 #include <wrl/client.h>
 #include <dxgi1_6.h>
 #include <d3d12.h>
-
+#include <chrono>
 #include "MeshPass.hpp"
 
 class Renderer 
@@ -40,6 +40,11 @@ private:
 private:
 	static constexpr UINT FrameCount = 2;
 	static constexpr DXGI_FORMAT DepthFormat = DXGI_FORMAT_D32_FLOAT;
+
+	using Clock = std::chrono::steady_clock;
+
+	Clock::time_point m_previousTime;
+	float m_deltaTime = 0.0f;
 
 	HWND m_window = nullptr;
 	UINT m_width = 0;

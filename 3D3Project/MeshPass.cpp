@@ -56,7 +56,7 @@ void MeshPass::Draw(ID3D12GraphicsCommandList* commandList)
 
 void MeshPass::Update(float deltaTime)
 {
-    m_rotationAngle += deltaTime;
+    m_rotationAngle += (deltaTime * 0.8);
 
     UpdateConstantBuffer();
 }
