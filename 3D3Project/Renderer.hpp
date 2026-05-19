@@ -8,6 +8,12 @@
 #include <chrono>
 #include "MeshPass.hpp"
 
+struct FrameResource
+{
+	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> CommandAllocator;
+	UINT64 FenceValue = 0;
+};
+
 class Renderer 
 {
 public:
@@ -35,7 +41,9 @@ private:
 
 	D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentRTV() const;
 	D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentDSV() const;
+
 	void WaitForGPU();
+	bool WaitForFrameResource(FrameResource& frameResource);
 
 private:
 	static constexpr UINT FrameCount = 2;
@@ -50,9 +58,9 @@ private:
 	UINT m_width = 0;
 	UINT m_height = 0;
 	UINT m_frameIndex = 0;
+	UINT m_currentFrameResourceIndex = 0;
 	UINT m_rtvDescSize = 0;
-	UINT m_fenceValue = 0;
-	HANDLE m_fenceEvent = nullptr;
+
 
 	Microsoft::WRL::ComPtr<IDXGIFactory6> m_factory;
 	Microsoft::WRL::ComPtr<IDXGIAdapter1> m_adapter;
@@ -65,10 +73,12 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_depthBuffer;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dsvDescHeap;
 
-	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_commandAllocators[FrameCount];
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;
 	Microsoft::WRL::ComPtr<ID3D12Fence> m_fence;
 
+	FrameResource m_frameResources[FrameCount];
+	UINT m_nextFenceValue = 1;
+	HANDLE m_fenceEvent = nullptr;
 
 	MeshPass m_meshPass;
 };

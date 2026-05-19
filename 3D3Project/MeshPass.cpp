@@ -5,17 +5,18 @@
 
 #pragma comment(lib, "d3dcompiler.lib")
 
-bool MeshPass::Initialize(ID3D12Device* device, DXGI_FORMAT renderTargetFormat, UINT width, UINT height)
+bool MeshPass::Initialize(ID3D12Device* device, DXGI_FORMAT renderTargetFormat, UINT width, UINT height, UINT frameCount)
 {
-    if (!CreateDeviceDependantResources(device, renderTargetFormat, width, height)) { return false; }
-
+    m_frameCount = frameCount;
     m_aspectRatio = static_cast<float>(width) / static_cast<float>(height);
+
+    if (!CreateDeviceDependantResources(device, renderTargetFormat, width, height)) { return false; }
 
     OutputDebugStringW(L"MeshPass initialized.\n");
     return true;
 }
 
-void MeshPass::Draw(ID3D12GraphicsCommandList* commandList)
+void MeshPass::Draw(ID3D12GraphicsCommandList* commandList, UINT frameResourceIndex)
 {
     commandList->RSSetViewports(1, &m_viewport);
     commandList->RSSetScissorRects(1, &m_scissorRect);
@@ -41,12 +42,14 @@ void MeshPass::Draw(ID3D12GraphicsCommandList* commandList)
     commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
     commandList->IASetIndexBuffer(&m_indexBufferView);
 
-    D3D12_GPU_VIRTUAL_ADDRESS constantBufferAdress = m_constantBuffer->GetGPUVirtualAddress();
+    D3D12_GPU_VIRTUAL_ADDRESS baseAddress = m_constantBuffer->GetGPUVirtualAddress();
+    D3D12_GPU_VIRTUAL_ADDRESS frameBaseAddress = 
+        baseAddress + static_cast<UINT64>(frameResourceIndex) * m_constantBufferFrameSize;
 
     for (UINT i = 0; i < static_cast<UINT>(m_cubes.size()); ++i)
     {
         D3D12_GPU_VIRTUAL_ADDRESS cubeConstantBufferAdress =
-            constantBufferAdress + i * m_constantBufferStride;
+            frameBaseAddress + static_cast<UINT64>(i) * m_constantBufferStride;
 
         commandList->SetGraphicsRootConstantBufferView(0, cubeConstantBufferAdress);
 
@@ -54,11 +57,11 @@ void MeshPass::Draw(ID3D12GraphicsCommandList* commandList)
     }
 }
 
-void MeshPass::Update(float deltaTime)
+void MeshPass::Update(float deltaTime, UINT frameResourceIndex)
 {
     m_rotationAngle += (deltaTime * 0.8);
 
-    UpdateConstantBuffer();
+    UpdateConstantBuffer(frameResourceIndex);
 }
 
 void MeshPass::Shutdown()
@@ -563,7 +566,10 @@ bool MeshPass::CreateIndexBuffer(ID3D12Device* device)
 bool MeshPass::CreateConstantBuffer(ID3D12Device* device, UINT width, UINT height)
 {
     m_constantBufferStride = (sizeof(TransformConstantBuffer) + 255) & ~255;
-    const UINT constantBufferSize = m_constantBufferStride * static_cast<UINT>(m_cubes.size());
+
+    m_constantBufferFrameSize = static_cast<UINT64>(m_constantBufferStride) * static_cast<UINT64>(m_cubes.size());
+
+    const UINT constantBufferSize = m_constantBufferFrameSize * static_cast<UINT64>(m_frameCount);
 
     D3D12_HEAP_PROPERTIES heapProps = {};
     heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
@@ -596,7 +602,10 @@ bool MeshPass::CreateConstantBuffer(ID3D12Device* device, UINT width, UINT heigh
         return false;
     }
 
-    UpdateConstantBuffer();
+    for (UINT frameIndex = 0; frameIndex < m_frameCount; ++frameIndex)
+    {
+        UpdateConstantBuffer(frameIndex);
+    }
 
     OutputDebugStringW(L"Constant buffer created.\n");
     return true;
@@ -622,7 +631,7 @@ bool  MeshPass::CreateSRVHeap(ID3D12Device* device)
     return SUCCEEDED(result);
 }
 
-void MeshPass::UpdateConstantBuffer()
+void MeshPass::UpdateConstantBuffer(UINT frameResourceIndex)
 {
     using namespace DirectX;
 
@@ -633,6 +642,8 @@ void MeshPass::UpdateConstantBuffer()
     XMMATRIX view = XMMatrixLookAtLH(eyePosition, focusPoint, upDirection);
 
     XMMATRIX projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(60.0f), m_aspectRatio, 0.1f, 100.0f);
+
+    const size_t frameOffset = static_cast<size_t>(frameResourceIndex) * static_cast<size_t>(m_constantBufferFrameSize);
 
     for (UINT i = 0; i < static_cast<UINT>(m_cubes.size()); ++i)
     {
@@ -645,7 +656,9 @@ void MeshPass::UpdateConstantBuffer()
 
         XMMATRIX worldViewProjection = world * view * projection;
 
-        uint8_t* destination = m_mappedConstantBufferData + i * m_constantBufferStride;
+        const size_t cubeOffset = static_cast<size_t>(i) * static_cast<size_t>(m_constantBufferStride);
+
+        uint8_t* destination = m_mappedConstantBufferData + frameOffset + cubeOffset;
         TransformConstantBuffer* constantBuffer = reinterpret_cast<TransformConstantBuffer*>(destination);
 
         XMStoreFloat4x4(&constantBuffer->WorldViewProjection, XMMatrixTranspose(worldViewProjection));

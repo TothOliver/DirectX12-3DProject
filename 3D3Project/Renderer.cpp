@@ -36,7 +36,7 @@ bool Renderer::Initialize(HWND window, UINT width, UINT height)
 
     if (!CreateFence()) { return false; }
 
-    if (!m_meshPass.Initialize(m_device.Get(), DXGI_FORMAT_R8G8B8A8_UNORM, m_width, m_height))
+    if (!m_meshPass.Initialize(m_device.Get(), DXGI_FORMAT_R8G8B8A8_UNORM, m_width, m_height, FrameCount))
     {
         OutputDebugStringW(L"Failed to initialize TrianglePass.\n");
         return false;
@@ -57,7 +57,11 @@ void Renderer::Render()
 
     m_previousTime = currentTime;
 
-    HRESULT result = m_commandAllocators[m_frameIndex]->Reset();
+    FrameResource& currentFrameResource = m_frameResources[m_currentFrameResourceIndex];
+
+    if (!WaitForFrameResource(currentFrameResource)) { return; }
+
+    HRESULT result = currentFrameResource.CommandAllocator->Reset();
 
     if (FAILED(result))
     {
@@ -65,7 +69,7 @@ void Renderer::Render()
         return;
     }
 
-    result = m_commandList->Reset(m_commandAllocators[m_frameIndex].Get(), nullptr);
+    result = m_commandList->Reset(currentFrameResource.CommandAllocator.Get(), nullptr);
 
     if (FAILED(result))
     {
@@ -93,8 +97,8 @@ void Renderer::Render()
     m_commandList->ClearRenderTargetView(currentRTV, clearColor, 0, nullptr);
     m_commandList->ClearDepthStencilView(currentDSV, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
-    m_meshPass.Update(m_deltaTime);
-    m_meshPass.Draw(m_commandList.Get());
+    m_meshPass.Update(m_deltaTime, m_currentFrameResourceIndex);
+    m_meshPass.Draw(m_commandList.Get(), m_currentFrameResourceIndex);
 
 
     D3D12_RESOURCE_BARRIER barrierPresent = {};
@@ -137,13 +141,14 @@ void Renderer::Render()
 
 void Renderer::Shutdown()
 {
+    WaitForGPU();
+
+    m_meshPass.Shutdown();
     if (m_fenceEvent != nullptr)
     {
         CloseHandle(m_fenceEvent);
         m_fenceEvent = nullptr;
     }
-
-    m_meshPass.Shutdown();
 
     OutputDebugStringW(L"Renderer shutdown.\n");
 }
@@ -409,13 +414,15 @@ bool Renderer::CreateCommandAllocators()
 {
     for (UINT i = 0; i < FrameCount; ++i)
     {
-        HRESULT result = m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocators[i]));
+        HRESULT result = m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_frameResources[i].CommandAllocator));
 
         if (FAILED(result))
         {
             OutputDebugStringW(L"Failed to create command allocator.\n");
             return false;
         }
+
+        m_frameResources[i].FenceValue = 0;
     }
 
     OutputDebugStringW(L"Command allocators created.\n");
@@ -425,7 +432,7 @@ bool Renderer::CreateCommandAllocators()
 bool Renderer::CreateCommandList()
 {
     HRESULT result = m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, 
-        m_commandAllocators[m_frameIndex].Get(), nullptr, IID_PPV_ARGS(&m_commandList));
+       m_frameResources[m_currentFrameResourceIndex].CommandAllocator.Get(), nullptr, IID_PPV_ARGS(&m_commandList));
 
     if (FAILED(result))
     {
@@ -455,7 +462,7 @@ bool Renderer::CreateFence()
         return false;
     }
 
-    m_fenceValue = 1;
+    m_nextFenceValue = 1;
     m_fenceEvent = CreateEventW(nullptr, FALSE, FALSE, nullptr);
 
     if (m_fenceEvent == nullptr)
@@ -484,7 +491,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE Renderer::GetCurrentDSV() const
 
 void Renderer::WaitForGPU()
 {
-    const UINT64 fenceToWaitFor = m_fenceValue;
+    const UINT64 fenceToWaitFor = m_nextFenceValue;
 
     HRESULT result = m_commandQueue->Signal(m_fence.Get(), fenceToWaitFor);
 
@@ -494,7 +501,7 @@ void Renderer::WaitForGPU()
         return;
     }
 
-    m_fenceValue++;
+    m_nextFenceValue++;
 
     if (m_fence->GetCompletedValue() < fenceToWaitFor)
     {
@@ -508,4 +515,25 @@ void Renderer::WaitForGPU()
 
         WaitForSingleObject(m_fenceEvent, INFINITE);
     }
+}
+
+bool Renderer::WaitForFrameResource(FrameResource& frameResource)
+{
+    if (frameResource.FenceValue == 0)
+        return true;
+
+    if (m_fence->GetCompletedValue() >= frameResource.FenceValue)
+        return true;
+
+    HRESULT result = m_fence->SetEventOnCompletion(frameResource.FenceValue, m_fenceEvent);
+    
+    if (FAILED(result))
+    {
+        OutputDebugStringW(L"Failed to set fence event.\n");
+        return false;
+    }
+
+    WaitForSingleObject(m_fenceEvent, INFINITE);
+
+    return true;
 }

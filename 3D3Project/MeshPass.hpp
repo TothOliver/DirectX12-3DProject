@@ -21,9 +21,9 @@ struct CubeInstance
 class MeshPass
 {
 public:
-	bool Initialize(ID3D12Device* device, DXGI_FORMAT renderTargetFormat, UINT width, UINT height);
-	void Draw(ID3D12GraphicsCommandList* commandList);
-	void Update(float deltaTime);
+	bool Initialize(ID3D12Device* device, DXGI_FORMAT renderTargetFormat, UINT width, UINT height, UINT frameCount);
+	void Draw(ID3D12GraphicsCommandList* commandList, UINT frameResourceIndex);
+	void Update(float deltaTime, UINT frameResourceIndex);
 	void Shutdown();
 
 private:
@@ -37,7 +37,7 @@ private:
 	bool CreateConstantBuffer(ID3D12Device* device, UINT width, UINT height);
 	bool CreateSRVHeap(ID3D12Device* device);
 
-	void UpdateConstantBuffer();
+	void UpdateConstantBuffer(UINT frameResourceIndex);
 
 private:
 	static constexpr UINT CubeCount = 500;
@@ -57,10 +57,12 @@ private:
 	D3D12_RECT m_scissorRect;
 	UINT m_indexCount = 0;
 
-	std::vector<CubeInstance> m_cubes;
+	UINT m_frameCount = 0;
 	UINT m_constantBufferStride = 0;
+	UINT64 m_constantBufferFrameSize = 0;
 	uint8_t* m_mappedConstantBufferData = nullptr;
 
+	std::vector<CubeInstance> m_cubes;
 	float m_rotationAngle = 0.0f;
 	float m_aspectRatio = 1.0f;
 
