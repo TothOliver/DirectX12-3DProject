@@ -39,7 +39,6 @@ private:
 
 	void UpdateConstantBuffer();
 
-
 private:
 	static constexpr UINT CubeCount = 500;
 
